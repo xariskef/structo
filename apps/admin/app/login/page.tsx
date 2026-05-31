@@ -1,14 +1,33 @@
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@structo/ui/components/card";
+
 import { AuthForm } from "../components/auth-form";
+import { Logo } from "../components/logo";
 
 export default function LoginPage() {
   return (
-    <main className="auth-page">
-      <p className="eyebrow">Structo CMS</p>
-      <h1>Welcome back.</h1>
-      <p className="intro">
-        Log in to enter your organization and site dashboards.
-      </p>
-      <AuthForm mode="login" />
-    </main>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex justify-center">
+          <Logo size={32} className="text-foreground" />
+        </div>
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardDescription>
+              Log in to enter your organization and site dashboards.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AuthForm mode="login" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

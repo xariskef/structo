@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const areas = [
   {
     title: "Create workspace",
@@ -13,34 +15,35 @@ const areas = [
   {
     title: "Platform administration",
     description: "Monitor organizations, users, health and support operations.",
-    href: "#",
+    href: null,
   },
 ];
 
 export default function HomePage() {
   return (
-    <main>
+    <main className="home-main">
       <p className="eyebrow">Structo CMS</p>
       <h1>A clean foundation for structured content.</h1>
       <p className="intro">
         The administration shell is ready for identity, tenancy and site
-        management work.
+        management.
       </p>
 
-      <section aria-label="Administration areas">
+      <div className="home-grid" role="list">
         {areas.map((area) => (
-          <article key={area.title}>
+          <div key={area.title} className="home-card" role="listitem">
             <h2>{area.title}</h2>
             <p>{area.description}</p>
-            {area.href === "#" ? (
-              <span>Added in a later milestone</span>
+            {area.href ? (
+              <Link href={area.href}>Open →</Link>
             ) : (
-              <Link href={area.href}>Open area</Link>
+              <span style={{ color: "#9db6ae", fontSize: "0.85rem" }}>
+                Coming in a later milestone
+              </span>
             )}
-          </article>
+          </div>
         ))}
-      </section>
+      </div>
     </main>
   );
 }
-import Link from "next/link";

@@ -1,4 +1,3 @@
-import { DashboardShell } from "../../../components/dashboard-shell";
 import { OrganizationOverview } from "../../../components/organization-overview";
 
 interface OrganizationDashboardPageProps {
@@ -11,8 +10,8 @@ export default async function OrganizationDashboardPage({
   const { organizationId } = await params;
 
   return (
-    <DashboardShell eyebrow="Organization dashboard" title="Manage sites.">
+    <div className="p-8">
       <OrganizationOverview organizationId={organizationId} />
-    </DashboardShell>
+    </div>
   );
 }

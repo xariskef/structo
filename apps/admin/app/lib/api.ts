@@ -33,6 +33,10 @@ export async function apiRequest<T>(
   const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+
     throw new ApiError(
       body.error?.message ??
         body.message ??

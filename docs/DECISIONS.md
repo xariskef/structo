@@ -148,6 +148,50 @@ send the raw token through an `HttpOnly`, `SameSite=Strict` cookie with the
 Store invitation token hashes rather than raw tokens. Invitation tokens are
 one-time credentials with explicit expiry.
 
+### D-110: Shared UI Component Library
+
+Status: accepted.
+
+Use shadcn/ui components distributed through a shared `packages/ui` workspace
+package (`@structo/ui`). Components are consumed as source `.tsx` files
+(not compiled) so the consuming application controls tree-shaking and styling.
+
+Tailwind CSS v4 processes the shared globals stylesheet from within
+`apps/admin` to avoid cross-package CSS module resolution issues in the pnpm
+strict monorepo.
+
+### D-111: Brand Color System
+
+Status: accepted.
+
+Apply the following brand palette across the full Tailwind CSS custom-property
+theme:
+
+| Role | Value |
+|---|---|
+| Navy (foreground, sidebar bg) | `#06163D` |
+| Blue (primary action) | `#245BFF` |
+| Light blue (secondary, sidebar accent) | `#5B7CFF` |
+| White | `#FFFFFF` |
+
+The sidebar is always dark navy regardless of light or dark mode. The primary
+action color in dark mode shifts to `#5B7CFF` for readability.
+
+### D-112: Administration UI Layout
+
+Status: accepted.
+
+Use nested Next.js App Router layouts to provide context-aware sidebars:
+
+- Organization context: dark navy sidebar with org switcher and org-level
+  navigation (Overview, Members).
+- Site context: dark navy sidebar with a back-link to the parent organization,
+  site name and status badge, and full CMS navigation sections (Content Types,
+  Entries, Media — Administration: Members, Settings).
+
+The two contexts are visually distinct through sidebar content and hierarchy
+rather than a change in base color.
+
 ## Open Decisions
 
 ### Q-002: Delivery Visibility

@@ -13,6 +13,11 @@ config({
   path: fileURLToPath(new URL("../../../.env", import.meta.url)),
 });
 
+config({
+  path: fileURLToPath(new URL("../../../.env.local", import.meta.url)),
+  override: true,
+});
+
 function resolvePort(value: string | undefined): number {
   if (!value) {
     return DEFAULT_API_PORT;
