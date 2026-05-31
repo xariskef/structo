@@ -124,6 +124,7 @@ model Site {
   invitations    Invitation[]
   settings       SiteSetting[]
   contentTypes   ContentType[]
+  entries        ContentEntry[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -149,6 +150,12 @@ enum ContentTypeStatus {
   ARCHIVED
 }
 
+enum ContentEntryStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model ContentType {
   id          String            @id @default(cuid())
   siteId      String
@@ -162,6 +169,7 @@ model ContentType {
 
   site     Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
   versions ContentTypeVersion[]
+  entries  ContentEntry[]
 
   @@unique([siteId, slug])
   @@index([siteId])
@@ -175,10 +183,51 @@ model ContentTypeVersion {
   createdById   String?
   createdAt     DateTime @default(now())
 
-  contentType ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  contentType ContentType    @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  entries     ContentEntry[]
 
   @@unique([contentTypeId, version])
   @@index([contentTypeId])
+}
+
+model ContentEntry {
+  id                   String              @id @default(cuid())
+  siteId               String
+  contentTypeId        String
+  contentTypeVersionId String
+  title                String
+  slug                 String
+  status               ContentEntryStatus  @default(DRAFT)
+  data                 Json                @default("{}")
+  publishedAt          DateTime?
+  createdById          String?
+  updatedById          String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  site               Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contentType        ContentType        @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  contentTypeVersion ContentTypeVersion @relation(fields: [contentTypeVersionId], references: [id])
+  revisions          ContentRevision[]
+
+  @@unique([contentTypeId, slug])
+  @@index([siteId, status])
+  @@index([contentTypeId])
+}
+
+model ContentRevision {
+  id          String             @id @default(cuid())
+  entryId     String
+  revision    Int
+  data        Json
+  status      ContentEntryStatus
+  createdById String?
+  createdAt   DateTime           @default(now())
+
+  entry ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, revision])
+  @@index([entryId])
 }
 
 model AuditLog {

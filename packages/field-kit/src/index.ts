@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const FIELD_TYPES = [
   "text",
   "textarea",
@@ -150,6 +152,62 @@ export function createField(
   };
 
   return base;
+}
+
+// ── Dynamic entry data validation ──────────────────────────────────────
+
+function buildFieldSchema(field: FieldDefinition): z.ZodTypeAny {
+  let schema: z.ZodTypeAny;
+
+  switch (field.type) {
+    case "text":
+    case "textarea":
+    case "richText":
+    case "url":
+    case "email":
+    case "color":
+    case "date":
+    case "dateTime":
+    case "time":
+      schema = z.string();
+      break;
+    case "number":
+      schema = z.number();
+      break;
+    case "boolean":
+      schema = z.boolean();
+      break;
+    case "select":
+      schema = z.string();
+      break;
+    case "multiSelect":
+      schema = z.array(z.string());
+      break;
+    case "group": {
+      const cfg = field.config as GroupConfig;
+      schema = buildEntryDataSchema(cfg.fields ?? []);
+      break;
+    }
+    case "repeater": {
+      const cfg = field.config as RepeaterConfig;
+      schema = z.array(buildEntryDataSchema(cfg.fields ?? []));
+      break;
+    }
+    default:
+      schema = z.unknown();
+  }
+
+  return field.required ? schema : schema.optional();
+}
+
+export function buildEntryDataSchema(
+  fields: FieldDefinition[],
+): z.ZodObject<Record<string, z.ZodTypeAny>> {
+  const shape: Record<string, z.ZodTypeAny> = {};
+  for (const field of fields) {
+    shape[field.key] = buildFieldSchema(field);
+  }
+  return z.object(shape);
 }
 
 export function labelToKey(label: string): string {

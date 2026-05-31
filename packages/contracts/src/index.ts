@@ -20,3 +20,4 @@ export * from "./auth.js";
 export * from "./tenancy.js";
 export * from "./settings.js";
 export * from "./content-types.js";
+export * from "./entries.js";
