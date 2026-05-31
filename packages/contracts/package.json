@@ -17,6 +17,7 @@
     "check-types": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@structo/field-kit": "workspace:*",
     "zod": "4.4.3"
   }
 }

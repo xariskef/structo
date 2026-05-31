@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@structo/contracts": "workspace:*",
+    "@structo/field-kit": "workspace:*",
     "@structo/ui": "workspace:*",
     "lucide-react": "1.17.0",
     "next": "16.2.6",

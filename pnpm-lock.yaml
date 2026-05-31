@@ -35,6 +35,9 @@ importers:
       '@structo/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@structo/field-kit':
+        specifier: workspace:*
+        version: link:../../packages/field-kit
       '@structo/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -93,6 +96,9 @@ importers:
       '@structo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@structo/field-kit':
+        specifier: workspace:*
+        version: link:../../packages/field-kit
       argon2:
         specifier: 0.44.0
         version: 0.44.0
@@ -124,6 +130,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      '@structo/field-kit':
+        specifier: workspace:*
+        version: link:../field-kit
       zod:
         specifier: 4.4.3
         version: 4.4.3

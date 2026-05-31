@@ -40,15 +40,13 @@ export class SettingsService {
     );
 
     const [site, rows] = await Promise.all([
-      this.databaseService.client.site
-        .findUniqueOrThrow({ where: { id: siteId } })
-        .catch(() => {
-          throw new NotFoundException("Site not found.");
-        }),
-      this.databaseService.client.siteSetting.findMany({
-        where: { siteId },
-      }),
+      this.databaseService.client.site.findUnique({ where: { id: siteId } }),
+      this.databaseService.client.siteSetting.findMany({ where: { siteId } }),
     ]);
+
+    if (!site) {
+      throw new NotFoundException("Site not found.");
+    }
 
     const map = new Map(rows.map((r) => [r.key, r.value]));
 
@@ -75,11 +73,13 @@ export class SettingsService {
       "site.manage_settings",
     );
 
-    const site = await this.databaseService.client.site
-      .findUniqueOrThrow({ where: { id: siteId } })
-      .catch(() => {
-        throw new NotFoundException("Site not found.");
-      });
+    const site = await this.databaseService.client.site.findUnique({
+      where: { id: siteId },
+    });
+
+    if (!site) {
+      throw new NotFoundException("Site not found.");
+    }
 
     const settingUpdates = SETTING_KEYS.filter(
       (key): key is SettingKey =>

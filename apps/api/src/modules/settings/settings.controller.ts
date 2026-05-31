@@ -6,14 +6,14 @@ import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SettingsService } from "./settings.service.js";
 
-@Controller("manage/sites/:siteId/settings")
+@Controller("manage")
 export class SettingsController {
   constructor(
     @Inject(SettingsService)
     private readonly settingsService: SettingsService,
   ) {}
 
-  @Get()
+  @Get("sites/:siteId/settings")
   getSettings(
     @CurrentUser() user: AuthenticatedUser,
     @Param("siteId") siteId: string,
@@ -21,7 +21,7 @@ export class SettingsController {
     return this.settingsService.getSettings(user.id, siteId);
   }
 
-  @Patch()
+  @Patch("sites/:siteId/settings")
   @HttpCode(200)
   updateSettings(
     @CurrentUser() user: AuthenticatedUser,

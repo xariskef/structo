@@ -18,6 +18,7 @@
     "@nestjs/throttler": "6.5.0",
     "@structo/contracts": "workspace:*",
     "@structo/database": "workspace:*",
+    "@structo/field-kit": "workspace:*",
     "argon2": "0.44.0",
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",

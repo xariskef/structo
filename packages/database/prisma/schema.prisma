@@ -123,6 +123,7 @@ model Site {
   memberships    SiteMembership[]
   invitations    Invitation[]
   settings       SiteSetting[]
+  contentTypes   ContentType[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -140,6 +141,44 @@ model SiteSetting {
 
   @@unique([siteId, key])
   @@index([siteId])
+}
+
+enum ContentTypeStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model ContentType {
+  id          String            @id @default(cuid())
+  siteId      String
+  name        String
+  slug        String
+  description String?
+  status      ContentTypeStatus @default(DRAFT)
+  fields      Json              @default("[]")
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  site     Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  versions ContentTypeVersion[]
+
+  @@unique([siteId, slug])
+  @@index([siteId])
+}
+
+model ContentTypeVersion {
+  id            String   @id @default(cuid())
+  contentTypeId String
+  version       Int
+  fields        Json
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  contentType ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([contentTypeId, version])
+  @@index([contentTypeId])
 }
 
 model AuditLog {
