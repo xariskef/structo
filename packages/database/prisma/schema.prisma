@@ -122,9 +122,41 @@ model Site {
   organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   memberships    SiteMembership[]
   invitations    Invitation[]
+  settings       SiteSetting[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  siteId    String
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, key])
+  @@index([siteId])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  siteId         String?
+  actorId        String?
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([actorId])
+  @@index([createdAt])
 }
 
 model SiteMembership {

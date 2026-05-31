@@ -8,6 +8,7 @@ import { DatabaseModule } from "./modules/database/database.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { InvitationsModule } from "./modules/invitations/invitations.module.js";
 import { OrganizationsModule } from "./modules/organizations/organizations.module.js";
+import { SettingsModule } from "./modules/settings/settings.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
 
 @Module({
@@ -23,6 +24,7 @@ import { SitesModule } from "./modules/sites/sites.module.js";
     HealthModule,
     InvitationsModule,
     OrganizationsModule,
+    SettingsModule,
     SitesModule,
   ],
   providers: [

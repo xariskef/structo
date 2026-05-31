@@ -32,6 +32,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@structo/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@structo/ui':
         specifier: workspace:*
         version: link:../../packages/ui

@@ -11,7 +11,8 @@ export type OrganizationPermission =
 export type SitePermission =
   | "site.view"
   | "site.manage_content"
-  | "site.manage_members";
+  | "site.manage_members"
+  | "site.manage_settings";
 
 export const ORGANIZATION_ROLE_PERMISSIONS: Record<
   OrganizationMembershipRole,
@@ -34,8 +35,18 @@ export const INHERITED_SITE_PERMISSIONS: Record<
   OrganizationMembershipRole,
   readonly SitePermission[]
 > = {
-  OWNER: ["site.view", "site.manage_content", "site.manage_members"],
-  ADMIN: ["site.view", "site.manage_content", "site.manage_members"],
+  OWNER: [
+    "site.view",
+    "site.manage_content",
+    "site.manage_members",
+    "site.manage_settings",
+  ],
+  ADMIN: [
+    "site.view",
+    "site.manage_content",
+    "site.manage_members",
+    "site.manage_settings",
+  ],
   ANALYST: ["site.view"],
 };
 
@@ -43,7 +54,12 @@ export const SITE_ROLE_PERMISSIONS: Record<
   SiteMembershipRole,
   readonly SitePermission[]
 > = {
-  SITE_ADMIN: ["site.view", "site.manage_content", "site.manage_members"],
+  SITE_ADMIN: [
+    "site.view",
+    "site.manage_content",
+    "site.manage_members",
+    "site.manage_settings",
+  ],
   EDITOR: ["site.view", "site.manage_content"],
   AUTHOR: ["site.view", "site.manage_content"],
   VIEWER: ["site.view"],
