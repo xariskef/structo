@@ -12,7 +12,10 @@ import type {
   RevisionSummary,
   UpdateEntryInput,
 } from "@structo/contracts";
-import { buildEntryDataSchema } from "@structo/field-kit";
+import {
+  buildDraftEntryDataSchema,
+  buildEntryDataSchema,
+} from "@structo/field-kit";
 import type { FieldDefinition } from "@structo/field-kit";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
@@ -48,17 +51,17 @@ export class EntriesService {
       include: { contentType: { select: { name: true } } },
     });
 
-    return rows.map((e) => ({
-      id: e.id,
-      siteId: e.siteId,
-      contentTypeId: e.contentTypeId,
-      contentTypeName: e.contentType.name,
-      title: e.title,
-      slug: e.slug,
-      status: e.status,
-      publishedAt: e.publishedAt,
-      createdAt: e.createdAt,
-      updatedAt: e.updatedAt,
+    return rows.map((entry) => ({
+      id: entry.id,
+      siteId: entry.siteId,
+      contentTypeId: entry.contentTypeId,
+      contentTypeName: entry.contentType.name,
+      title: entry.title,
+      slug: entry.slug,
+      status: entry.status,
+      publishedAt: entry.publishedAt,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
     }));
   }
 
@@ -70,49 +73,67 @@ export class EntriesService {
     await this.authorizationService.assertSitePermission(
       userId,
       siteId,
-      "site.manage_content",
+      "site.create_content",
     );
 
-    // Resolve the active version of the content type
-    const activeVersion = await this.resolveActiveVersion(input.contentTypeId, siteId);
-    const fields = activeVersion.fields as unknown as FieldDefinition[];
-
-    // Validate entry data against the field schema
-    this.validateData(fields, input.data);
+    const activeVersion = await this.resolveActiveVersion(
+      input.contentTypeId,
+      siteId,
+    );
+    const fields = this.toFields(activeVersion.fields);
+    const data = this.validateData(fields, input.data, "draft");
 
     try {
-      const entry = await this.db.client.contentEntry.create({
-        data: {
-          siteId,
-          contentTypeId: input.contentTypeId,
-          contentTypeVersionId: activeVersion.id,
-          title: input.title,
-          slug: input.slug,
-          data: JSON.parse(JSON.stringify(input.data)),
-          createdById: userId,
-          updatedById: userId,
-        },
-        include: {
-          contentType: { select: { name: true } },
-          revisions: { orderBy: { revision: "desc" }, take: 1, select: { revision: true } },
-        },
-      });
+      const entry = await this.db.client.$transaction(async (transaction) => {
+        const created = await transaction.contentEntry.create({
+          data: {
+            siteId,
+            contentTypeId: input.contentTypeId,
+            contentTypeVersionId: activeVersion.id,
+            title: input.title,
+            slug: input.slug,
+            data: this.toJson(data),
+            createdById: userId,
+            updatedById: userId,
+          },
+          include: {
+            contentType: { select: { name: true } },
+            contentTypeVersion: { select: { fields: true } },
+            revisions: {
+              orderBy: { revision: "desc" },
+              take: 1,
+              select: { revision: true },
+            },
+          },
+        });
 
-      await this.db.client.auditLog.create({
-        data: {
-          siteId,
-          actorId: userId,
-          action: "entry.create",
-          entityType: "ContentEntry",
-          entityId: entry.id,
-          metadata: { title: entry.title, contentTypeId: entry.contentTypeId },
-        },
+        await transaction.auditLog.create({
+          data: {
+            organizationId: activeVersion.organizationId,
+            siteId,
+            actorId: userId,
+            action: "entry.create",
+            entityType: "ContentEntry",
+            entityId: created.id,
+            metadata: {
+              title: created.title,
+              contentTypeId: created.contentTypeId,
+            },
+          },
+        });
+
+        return created;
       });
 
       return this.toDetail(entry, null);
     } catch (error: unknown) {
-      if (error instanceof Error && error.message.includes("Unique constraint")) {
-        throw new ConflictException("An entry with this slug already exists for this content type.");
+      if (
+        error instanceof Error &&
+        error.message.includes("Unique constraint")
+      ) {
+        throw new ConflictException(
+          "An entry with this slug already exists for this content type.",
+        );
       }
       throw error;
     }
@@ -123,13 +144,22 @@ export class EntriesService {
     siteId: string,
     entryId: string,
   ): Promise<EntryDetail> {
-    await this.authorizationService.assertSitePermission(userId, siteId, "site.view");
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.view",
+    );
 
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
       include: {
         contentType: { select: { name: true } },
-        revisions: { orderBy: { revision: "desc" }, take: 1, select: { revision: true } },
+        contentTypeVersion: { select: { fields: true } },
+        revisions: {
+          orderBy: { revision: "desc" },
+          take: 1,
+          select: { revision: true },
+        },
       },
     });
 
@@ -146,10 +176,18 @@ export class EntriesService {
     entryId: string,
     input: UpdateEntryInput,
   ): Promise<EntryDetail> {
-    await this.authorizationService.assertSitePermission(userId, siteId, "site.manage_content");
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.edit_content",
+    );
 
     const existing = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
+      include: {
+        contentTypeVersion: { select: { fields: true } },
+        site: { select: { organizationId: true } },
+      },
     });
 
     if (!existing || existing.siteId !== siteId) {
@@ -160,27 +198,45 @@ export class EntriesService {
       throw new BadRequestException("Archived entries cannot be edited.");
     }
 
-    // Validate new data if provided
-    if (input.data !== undefined) {
-      const activeVersion = await this.resolveActiveVersion(existing.contentTypeId, siteId);
-      const fields = activeVersion.fields as unknown as FieldDefinition[];
-      this.validateData(fields, input.data);
-    }
+    const data =
+      input.data === undefined
+        ? undefined
+        : this.validateData(
+            this.toFields(existing.contentTypeVersion.fields),
+            input.data,
+            "draft",
+          );
 
     try {
-      await this.db.client.contentEntry.update({
-        where: { id: entryId },
-        data: {
-          ...(input.title !== undefined ? { title: input.title } : {}),
-          ...(input.slug !== undefined ? { slug: input.slug } : {}),
-          ...(input.data !== undefined ? { data: JSON.parse(JSON.stringify(input.data)) } : {}),
-          updatedById: userId,
-        },
-      });
+      await this.db.client.$transaction([
+        this.db.client.contentEntry.update({
+          where: { id: entryId },
+          data: {
+            ...(input.title !== undefined ? { title: input.title } : {}),
+            ...(input.slug !== undefined ? { slug: input.slug } : {}),
+            ...(data !== undefined ? { data: this.toJson(data) } : {}),
+            updatedById: userId,
+          },
+        }),
+        this.db.client.auditLog.create({
+          data: {
+            organizationId: existing.site.organizationId,
+            siteId,
+            actorId: userId,
+            action: "entry.update",
+            entityType: "ContentEntry",
+            entityId: entryId,
+            metadata: { updatedFields: Object.keys(input) },
+          },
+        }),
+      ]);
 
       return this.get(userId, siteId, entryId);
     } catch (error: unknown) {
-      if (error instanceof Error && error.message.includes("Unique constraint")) {
+      if (
+        error instanceof Error &&
+        error.message.includes("Unique constraint")
+      ) {
         throw new ConflictException("An entry with this slug already exists.");
       }
       throw error;
@@ -192,12 +248,22 @@ export class EntriesService {
     siteId: string,
     entryId: string,
   ): Promise<EntryDetail> {
-    await this.authorizationService.assertSitePermission(userId, siteId, "site.manage_content");
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.publish_content",
+    );
 
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
       include: {
-        revisions: { orderBy: { revision: "desc" }, take: 1, select: { revision: true } },
+        contentTypeVersion: { select: { fields: true } },
+        site: { select: { organizationId: true } },
+        revisions: {
+          orderBy: { revision: "desc" },
+          take: 1,
+          select: { revision: true },
+        },
       },
     });
 
@@ -209,24 +275,35 @@ export class EntriesService {
       throw new BadRequestException("Archived entries cannot be published.");
     }
 
+    const data = this.validateData(
+      this.toFields(entry.contentTypeVersion.fields),
+      this.toData(entry.data),
+      "publish",
+    );
     const nextRevision = (entry.revisions[0]?.revision ?? 0) + 1;
 
     await this.db.client.$transaction([
       this.db.client.contentEntry.update({
         where: { id: entryId },
-        data: { status: "PUBLISHED", publishedAt: new Date(), updatedById: userId },
+        data: {
+          data: this.toJson(data),
+          status: "PUBLISHED",
+          publishedAt: new Date(),
+          updatedById: userId,
+        },
       }),
       this.db.client.contentRevision.create({
         data: {
           entryId,
           revision: nextRevision,
-          data: JSON.parse(JSON.stringify(entry.data)),
+          data: this.toJson(data),
           status: "PUBLISHED",
           createdById: userId,
         },
       }),
       this.db.client.auditLog.create({
         data: {
+          organizationId: entry.site.organizationId,
           siteId,
           actorId: userId,
           action: "entry.publish",
@@ -245,22 +322,87 @@ export class EntriesService {
     siteId: string,
     entryId: string,
   ): Promise<EntryDetail> {
-    await this.authorizationService.assertSitePermission(userId, siteId, "site.manage_content");
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.publish_content",
+    );
 
-    const entry = await this.db.client.contentEntry.findUnique({ where: { id: entryId } });
+    const entry = await this.db.client.contentEntry.findUnique({
+      where: { id: entryId },
+      include: { site: { select: { organizationId: true } } },
+    });
 
     if (!entry || entry.siteId !== siteId) {
       throw new NotFoundException("Entry not found.");
     }
 
     if (entry.status !== "PUBLISHED") {
-      throw new BadRequestException("Only published entries can be unpublished.");
+      throw new BadRequestException(
+        "Only published entries can be unpublished.",
+      );
     }
 
-    await this.db.client.contentEntry.update({
+    await this.db.client.$transaction([
+      this.db.client.contentEntry.update({
+        where: { id: entryId },
+        data: { status: "DRAFT", updatedById: userId },
+      }),
+      this.db.client.auditLog.create({
+        data: {
+          organizationId: entry.site.organizationId,
+          siteId,
+          actorId: userId,
+          action: "entry.unpublish",
+          entityType: "ContentEntry",
+          entityId: entryId,
+        },
+      }),
+    ]);
+
+    return this.get(userId, siteId, entryId);
+  }
+
+  async archive(
+    userId: string,
+    siteId: string,
+    entryId: string,
+  ): Promise<EntryDetail> {
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.edit_content",
+    );
+
+    const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
-      data: { status: "DRAFT", updatedById: userId },
+      include: { site: { select: { organizationId: true } } },
     });
+
+    if (!entry || entry.siteId !== siteId) {
+      throw new NotFoundException("Entry not found.");
+    }
+
+    if (entry.status === "ARCHIVED") {
+      return this.get(userId, siteId, entryId);
+    }
+
+    await this.db.client.$transaction([
+      this.db.client.contentEntry.update({
+        where: { id: entryId },
+        data: { status: "ARCHIVED", updatedById: userId },
+      }),
+      this.db.client.auditLog.create({
+        data: {
+          organizationId: entry.site.organizationId,
+          siteId,
+          actorId: userId,
+          action: "entry.archive",
+          entityType: "ContentEntry",
+          entityId: entryId,
+        },
+      }),
+    ]);
 
     return this.get(userId, siteId, entryId);
   }
@@ -270,9 +412,15 @@ export class EntriesService {
     siteId: string,
     entryId: string,
   ): Promise<RevisionSummary[]> {
-    await this.authorizationService.assertSitePermission(userId, siteId, "site.view");
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.view",
+    );
 
-    const entry = await this.db.client.contentEntry.findUnique({ where: { id: entryId } });
+    const entry = await this.db.client.contentEntry.findUnique({
+      where: { id: entryId },
+    });
 
     if (!entry || entry.siteId !== siteId) {
       throw new NotFoundException("Entry not found.");
@@ -283,44 +431,70 @@ export class EntriesService {
       orderBy: { revision: "desc" },
     });
 
-    return revisions.map((r) => ({
-      id: r.id,
-      revision: r.revision,
-      status: r.status,
-      createdAt: r.createdAt,
+    return revisions.map((revision) => ({
+      id: revision.id,
+      revision: revision.revision,
+      status: revision.status,
+      createdAt: revision.createdAt,
     }));
   }
 
-  // ── Private helpers ────────────────────────────────────────────────────
-
   private async resolveActiveVersion(contentTypeId: string, siteId: string) {
-    const version = await this.db.client.contentTypeVersion.findFirst({
-      where: { contentTypeId },
-      orderBy: { version: "desc" },
+    const contentType = await this.db.client.contentType.findFirst({
+      where: { id: contentTypeId, siteId, status: "ACTIVE" },
+      include: {
+        site: { select: { organizationId: true } },
+        versions: {
+          orderBy: { version: "desc" },
+          take: 1,
+          select: { id: true, fields: true },
+        },
+      },
     });
 
-    if (!version) {
+    const version = contentType?.versions[0];
+    if (!contentType || !version) {
       throw new BadRequestException(
-        "The content type has no active version. Activate it first.",
+        "The site content type has no active version. Activate it first.",
       );
     }
 
-    return version;
+    return { ...version, organizationId: contentType.site.organizationId };
   }
 
   private validateData(
     fields: FieldDefinition[],
     data: Record<string, unknown>,
-  ): void {
-    const schema = buildEntryDataSchema(fields);
+    mode: "draft" | "publish",
+  ): Record<string, unknown> {
+    const schema =
+      mode === "draft"
+        ? buildDraftEntryDataSchema(fields)
+        : buildEntryDataSchema(fields);
     const result = schema.safeParse(data);
 
     if (!result.success) {
       const messages = result.error.issues
-        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
         .join("; ");
       throw new BadRequestException(`Entry data is invalid: ${messages}`);
     }
+
+    return result.data;
+  }
+
+  private toFields(fields: unknown): FieldDefinition[] {
+    return Array.isArray(fields) ? (fields as FieldDefinition[]) : [];
+  }
+
+  private toData(data: unknown): Record<string, unknown> {
+    return typeof data === "object" && data !== null
+      ? (data as Record<string, unknown>)
+      : {};
+  }
+
+  private toJson(data: Record<string, unknown>) {
+    return JSON.parse(JSON.stringify(data));
   }
 
   private toDetail(
@@ -337,6 +511,7 @@ export class EntriesService {
       createdAt: Date;
       updatedAt: Date;
       contentType: { name: string };
+      contentTypeVersion: { fields: unknown };
     },
     latestRevision: number | null,
   ): EntryDetail {
@@ -349,7 +524,8 @@ export class EntriesService {
       title: entry.title,
       slug: entry.slug,
       status: entry.status,
-      data: (entry.data as Record<string, unknown>) ?? {},
+      data: this.toData(entry.data),
+      fields: this.toFields(entry.contentTypeVersion.fields),
       publishedAt: entry.publishedAt,
       latestRevision,
       createdAt: entry.createdAt,

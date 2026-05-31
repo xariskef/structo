@@ -10,7 +10,10 @@ export type OrganizationPermission =
 
 export type SitePermission =
   | "site.view"
-  | "site.manage_content"
+  | "site.manage_content_types"
+  | "site.create_content"
+  | "site.edit_content"
+  | "site.publish_content"
   | "site.manage_members"
   | "site.manage_settings";
 
@@ -37,13 +40,19 @@ export const INHERITED_SITE_PERMISSIONS: Record<
 > = {
   OWNER: [
     "site.view",
-    "site.manage_content",
+    "site.manage_content_types",
+    "site.create_content",
+    "site.edit_content",
+    "site.publish_content",
     "site.manage_members",
     "site.manage_settings",
   ],
   ADMIN: [
     "site.view",
-    "site.manage_content",
+    "site.manage_content_types",
+    "site.create_content",
+    "site.edit_content",
+    "site.publish_content",
     "site.manage_members",
     "site.manage_settings",
   ],
@@ -56,11 +65,19 @@ export const SITE_ROLE_PERMISSIONS: Record<
 > = {
   SITE_ADMIN: [
     "site.view",
-    "site.manage_content",
+    "site.manage_content_types",
+    "site.create_content",
+    "site.edit_content",
+    "site.publish_content",
     "site.manage_members",
     "site.manage_settings",
   ],
-  EDITOR: ["site.view", "site.manage_content"],
-  AUTHOR: ["site.view", "site.manage_content"],
+  EDITOR: [
+    "site.view",
+    "site.create_content",
+    "site.edit_content",
+    "site.publish_content",
+  ],
+  AUTHOR: ["site.view", "site.create_content", "site.edit_content"],
   VIEWER: ["site.view"],
 };

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Patch } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Patch,
+} from "@nestjs/common";
 import { updateSiteSettingsSchema } from "@structo/contracts";
 
 import { parseInput } from "../../common/validation/parse-input.js";

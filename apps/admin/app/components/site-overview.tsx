@@ -88,9 +88,7 @@ export function SiteOverview({ siteId }: SiteOverviewProps) {
             </Badge>
           )}
         </div>
-        {site && (
-          <p className="text-sm text-muted-foreground">{site.slug}</p>
-        )}
+        {site && <p className="text-sm text-muted-foreground">{site.slug}</p>}
       </div>
 
       {error && (
@@ -102,10 +100,7 @@ export function SiteOverview({ siteId }: SiteOverviewProps) {
       {/* Upcoming features grid */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {UPCOMING.map(({ icon: Icon, title, description }) => (
-          <Card
-            key={title}
-            className="border-dashed opacity-60"
-          >
+          <Card key={title} className="border-dashed opacity-60">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
                 <Icon className="h-4 w-4 text-muted-foreground" />

@@ -30,10 +30,12 @@ export function OrgSidebarNav({ organizationId }: OrgSidebarNavProps) {
   const otherOrgs = organizations.filter((o) => o.id !== organizationId);
 
   useEffect(() => {
-    void apiRequest<OrganizationSummary[]>("/manage/organizations").then(
-      setOrganizations,
-    );
-  }, [organizationId]);
+    void apiRequest<OrganizationSummary[]>("/manage/organizations")
+      .then(setOrganizations)
+      .catch(() => {
+        router.replace("/login");
+      });
+  }, [organizationId, router]);
 
   async function logout() {
     await apiRequest("/manage/auth/logout", { method: "POST" }).catch(() => {});

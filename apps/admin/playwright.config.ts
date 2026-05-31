@@ -21,10 +21,22 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
-    timeout: 30_000,
-  },
+  webServer: [
+    {
+      command: "pnpm --filter @structo/api dev",
+      url: "http://localhost:3001/api/v1/health",
+      reuseExistingServer: true,
+      timeout: 30_000,
+      env: {
+        ...process.env,
+        NODE_ENV: "test",
+      },
+    },
+    {
+      command: "pnpm dev",
+      url: "http://localhost:3000",
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+  ],
 });

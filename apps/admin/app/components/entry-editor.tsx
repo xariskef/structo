@@ -5,11 +5,12 @@ import { Button } from "@structo/ui/components/button";
 import { Input } from "@structo/ui/components/input";
 import { Label } from "@structo/ui/components/label";
 import { Separator } from "@structo/ui/components/separator";
-import type { ContentTypeDetail, EntryDetail, RevisionSummary } from "@structo/contracts";
+import type { EntryDetail, RevisionSummary } from "@structo/contracts";
 import type { FieldDefinition } from "@structo/field-kit";
 import {
   CheckCircle2,
   Clock,
+  Archive,
   EyeOff,
   Loader2,
   Send,
@@ -40,7 +41,6 @@ function labelToSlug(title: string): string {
 
 export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
   const [entry, setEntry] = useState<EntryDetail | null>(null);
-  const [contentType, setContentType] = useState<ContentTypeDetail | null>(null);
   const [data, setData] = useState<Record<string, unknown>>({});
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -49,6 +49,7 @@ export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -60,12 +61,6 @@ export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
       setTitle(e.title);
       setSlug(e.slug);
       setData(e.data);
-
-      // Load content type for field schema
-      const ct = await apiRequest<ContentTypeDetail>(
-        `/manage/sites/${siteId}/content-types/${e.contentTypeId}`,
-      );
-      setContentType(ct);
 
       // Load revisions
       const revs = await apiRequest<RevisionSummary[]>(
@@ -144,7 +139,23 @@ export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
     }
   }
 
-  if (!entry || !contentType) {
+  async function archive() {
+    setIsArchiving(true);
+    setError(undefined);
+    try {
+      const updated = await apiRequest<EntryDetail>(
+        `/manage/sites/${siteId}/entries/${entryId}/archive`,
+        { method: "POST" },
+      );
+      setEntry(updated);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unable to archive.");
+    } finally {
+      setIsArchiving(false);
+    }
+  }
+
+  if (!entry) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -153,7 +164,7 @@ export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
     );
   }
 
-  const fields = contentType.fields as FieldDefinition[];
+  const fields = entry.fields as FieldDefinition[];
   const isArchived = entry.status === "ARCHIVED";
 
   return (
@@ -170,7 +181,7 @@ export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
             </Link>
             <span className="text-[11px] text-muted-foreground">/</span>
             <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {contentType.name}
+              {entry.contentTypeName}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -199,7 +210,9 @@ export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
               onClick={save}
               disabled={isSaving}
             >
-              {isSaving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {isSaving && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
               Save draft
             </Button>
             {entry.status === "PUBLISHED" ? (
@@ -218,6 +231,15 @@ export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
                 {isPublishing ? "Publishing…" : "Publish"}
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={archive}
+              disabled={isArchiving}
+            >
+              <Archive className="mr-1.5 h-3.5 w-3.5" />
+              {isArchiving ? "Archiving..." : "Archive"}
+            </Button>
           </div>
         )}
       </div>
@@ -267,7 +289,7 @@ export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
       {fields.length > 0 ? (
         <div className="flex flex-col gap-5 rounded-lg border border-border bg-card p-5">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            {contentType.name} fields
+            {entry.contentTypeName} fields
           </p>
           {fields.map((field) => (
             <FieldRenderer

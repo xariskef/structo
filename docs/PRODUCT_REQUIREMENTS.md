@@ -96,12 +96,15 @@ Needs:
 
 ### Content Modeling
 
-- Content types are scoped to one site.
+- Content types are site-scoped custom post types. A site can define flexible
+  collections such as pages, articles, services, products or events.
 - Content schemas are versioned.
 - Entry values are validated server-side.
 - The initial field catalog includes rich structured fields.
 - Nested groups are supported.
 - Repeaters support add-row, remove-row and reorder-row operations.
+- Categories, tags and navigation menus are added before the first delivery API
+  so frontend contracts include the editorial structure from the beginning.
 
 ### Delivery API
 
@@ -135,7 +138,6 @@ Needs:
 ## Open Product Questions
 
 - Should published delivery optionally be public per site?
-- Are categories and tags part of the first content modeling release?
 - Which analytics are needed first: administration usage or visitor analytics?
 - Should a site-only user with access to multiple invited sites receive a small
   personal site switcher?

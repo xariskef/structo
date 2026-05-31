@@ -5,11 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type {
-  ContentTypeDetail,
-  ContentTypeSummary,
-  CreateContentTypeInput,
-  UpdateContentTypeInput,
+import {
+  activatableContentTypeFieldsSchema,
+  type ContentTypeDetail,
+  type ContentTypeSummary,
+  type CreateContentTypeInput,
+  type UpdateContentTypeInput,
 } from "@structo/contracts";
 import type { FieldDefinition } from "@structo/field-kit";
 
@@ -37,15 +38,17 @@ export class ContentTypesService {
       orderBy: { name: "asc" },
     });
 
-    return rows.map((ct) => ({
-      id: ct.id,
-      siteId: ct.siteId,
-      name: ct.name,
-      slug: ct.slug,
-      status: ct.status,
-      fieldCount: Array.isArray(ct.fields) ? ct.fields.length : 0,
-      createdAt: ct.createdAt,
-      updatedAt: ct.updatedAt,
+    return rows.map((contentType) => ({
+      id: contentType.id,
+      siteId: contentType.siteId,
+      name: contentType.name,
+      slug: contentType.slug,
+      status: contentType.status,
+      fieldCount: Array.isArray(contentType.fields)
+        ? contentType.fields.length
+        : 0,
+      createdAt: contentType.createdAt,
+      updatedAt: contentType.updatedAt,
     }));
   }
 
@@ -57,43 +60,43 @@ export class ContentTypesService {
     await this.authorizationService.assertSitePermission(
       userId,
       siteId,
-      "site.manage_content",
+      "site.manage_content_types",
     );
 
+    const site = await this.findSite(siteId);
+
     try {
-      const ct = await this.db.client.contentType.create({
-        data: {
-          siteId,
-          name: input.name,
-          slug: input.slug,
-          description: input.description ?? null,
-          fields: [],
-        },
-      });
+      const contentType = await this.db.client.$transaction(
+        async (transaction) => {
+          const created = await transaction.contentType.create({
+            data: {
+              siteId,
+              name: input.name,
+              slug: input.slug,
+              description: input.description ?? null,
+              fields: [],
+            },
+          });
 
-      await this.db.client.auditLog.create({
-        data: {
-          siteId,
-          actorId: userId,
-          action: "content_type.create",
-          entityType: "ContentType",
-          entityId: ct.id,
-          metadata: { name: ct.name, slug: ct.slug },
-        },
-      });
+          await transaction.auditLog.create({
+            data: {
+              organizationId: site.organizationId,
+              siteId,
+              actorId: userId,
+              action: "content_type.create",
+              entityType: "ContentType",
+              entityId: created.id,
+              metadata: { name: created.name, slug: created.slug },
+            },
+          });
 
-      return this.toDetail(ct, null);
+          return created;
+        },
+      );
+
+      return this.toDetail(contentType, null);
     } catch (error: unknown) {
-      if (
-        error instanceof Error &&
-        error.message.includes("Unique constraint")
-      ) {
-        throw new ConflictException(
-          "A content type with this slug already exists.",
-        );
-      }
-
-      throw error;
+      this.throwSlugConflict(error);
     }
   }
 
@@ -108,7 +111,7 @@ export class ContentTypesService {
       "site.view",
     );
 
-    const ct = await this.db.client.contentType.findUnique({
+    const contentType = await this.db.client.contentType.findUnique({
       where: { id: contentTypeId },
       include: {
         versions: {
@@ -119,13 +122,11 @@ export class ContentTypesService {
       },
     });
 
-    if (!ct || ct.siteId !== siteId) {
+    if (!contentType || contentType.siteId !== siteId) {
       throw new NotFoundException("Content type not found.");
     }
 
-    const latestVersion = ct.versions[0]?.version ?? null;
-
-    return this.toDetail(ct, latestVersion);
+    return this.toDetail(contentType, contentType.versions[0]?.version ?? null);
   }
 
   async update(
@@ -137,11 +138,12 @@ export class ContentTypesService {
     await this.authorizationService.assertSitePermission(
       userId,
       siteId,
-      "site.manage_content",
+      "site.manage_content_types",
     );
 
     const existing = await this.db.client.contentType.findUnique({
       where: { id: contentTypeId },
+      include: { site: { select: { organizationId: true } } },
     });
 
     if (!existing || existing.siteId !== siteId) {
@@ -153,32 +155,36 @@ export class ContentTypesService {
     }
 
     try {
-      await this.db.client.contentType.update({
-        where: { id: contentTypeId },
-        data: {
-          ...(input.name !== undefined ? { name: input.name } : {}),
-          ...(input.slug !== undefined ? { slug: input.slug } : {}),
-          ...(input.description !== undefined
-            ? { description: input.description }
-            : {}),
-          ...(input.fields !== undefined
-            ? { fields: JSON.parse(JSON.stringify(input.fields)) }
-            : {}),
-        },
-      });
+      await this.db.client.$transaction([
+        this.db.client.contentType.update({
+          where: { id: contentTypeId },
+          data: {
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            ...(input.slug !== undefined ? { slug: input.slug } : {}),
+            ...(input.description !== undefined
+              ? { description: input.description }
+              : {}),
+            ...(input.fields !== undefined
+              ? { fields: JSON.parse(JSON.stringify(input.fields)) }
+              : {}),
+          },
+        }),
+        this.db.client.auditLog.create({
+          data: {
+            organizationId: existing.site.organizationId,
+            siteId,
+            actorId: userId,
+            action: "content_type.update",
+            entityType: "ContentType",
+            entityId: contentTypeId,
+            metadata: { updatedFields: Object.keys(input) },
+          },
+        }),
+      ]);
 
       return this.get(userId, siteId, contentTypeId);
     } catch (error: unknown) {
-      if (
-        error instanceof Error &&
-        error.message.includes("Unique constraint")
-      ) {
-        throw new ConflictException(
-          "A content type with this slug already exists.",
-        );
-      }
-
-      throw error;
+      this.throwSlugConflict(error);
     }
   }
 
@@ -190,12 +196,13 @@ export class ContentTypesService {
     await this.authorizationService.assertSitePermission(
       userId,
       siteId,
-      "site.manage_content",
+      "site.manage_content_types",
     );
 
-    const ct = await this.db.client.contentType.findUnique({
+    const contentType = await this.db.client.contentType.findUnique({
       where: { id: contentTypeId },
       include: {
+        site: { select: { organizationId: true } },
         versions: {
           orderBy: { version: "desc" },
           take: 1,
@@ -204,23 +211,29 @@ export class ContentTypesService {
       },
     });
 
-    if (!ct || ct.siteId !== siteId) {
+    if (!contentType || contentType.siteId !== siteId) {
       throw new NotFoundException("Content type not found.");
     }
 
-    if (ct.status === "ARCHIVED") {
+    if (contentType.status === "ARCHIVED") {
       throw new BadRequestException(
         "Archived content types cannot be activated.",
       );
     }
 
-    if (!Array.isArray(ct.fields) || ct.fields.length === 0) {
+    const fieldsResult = activatableContentTypeFieldsSchema.safeParse(
+      contentType.fields,
+    );
+    if (!fieldsResult.success) {
+      const messages = fieldsResult.error.issues
+        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+        .join("; ");
       throw new BadRequestException(
-        "A content type must have at least one field before activation.",
+        `Content type schema is invalid: ${messages}`,
       );
     }
 
-    const nextVersion = (ct.versions[0]?.version ?? 0) + 1;
+    const nextVersion = (contentType.versions[0]?.version ?? 0) + 1;
 
     const [updated] = await this.db.client.$transaction([
       this.db.client.contentType.update({
@@ -238,12 +251,13 @@ export class ContentTypesService {
         data: {
           contentTypeId,
           version: nextVersion,
-          fields: ct.fields,
+          fields: JSON.parse(JSON.stringify(fieldsResult.data)),
           createdById: userId,
         },
       }),
       this.db.client.auditLog.create({
         data: {
+          organizationId: contentType.site.organizationId,
           siteId,
           actorId: userId,
           action: "content_type.activate",
@@ -265,34 +279,69 @@ export class ContentTypesService {
     await this.authorizationService.assertSitePermission(
       userId,
       siteId,
-      "site.manage_content",
+      "site.manage_content_types",
     );
 
-    const ct = await this.db.client.contentType.findUnique({
+    const contentType = await this.db.client.contentType.findUnique({
       where: { id: contentTypeId },
+      include: { site: { select: { organizationId: true } } },
     });
 
-    if (!ct || ct.siteId !== siteId) {
+    if (!contentType || contentType.siteId !== siteId) {
       throw new NotFoundException("Content type not found.");
     }
 
-    const updated = await this.db.client.contentType.update({
-      where: { id: contentTypeId },
-      data: { status: "ARCHIVED" },
-      include: {
-        versions: {
-          orderBy: { version: "desc" },
-          take: 1,
-          select: { version: true },
+    const [updated] = await this.db.client.$transaction([
+      this.db.client.contentType.update({
+        where: { id: contentTypeId },
+        data: { status: "ARCHIVED" },
+        include: {
+          versions: {
+            orderBy: { version: "desc" },
+            take: 1,
+            select: { version: true },
+          },
         },
-      },
-    });
+      }),
+      this.db.client.auditLog.create({
+        data: {
+          organizationId: contentType.site.organizationId,
+          siteId,
+          actorId: userId,
+          action: "content_type.archive",
+          entityType: "ContentType",
+          entityId: contentTypeId,
+        },
+      }),
+    ]);
 
     return this.toDetail(updated, updated.versions[0]?.version ?? null);
   }
 
+  private async findSite(siteId: string): Promise<{ organizationId: string }> {
+    const site = await this.db.client.site.findUnique({
+      where: { id: siteId },
+      select: { organizationId: true },
+    });
+
+    if (!site) {
+      throw new NotFoundException("Site not found.");
+    }
+
+    return site;
+  }
+
+  private throwSlugConflict(error: unknown): never {
+    if (error instanceof Error && error.message.includes("Unique constraint")) {
+      throw new ConflictException(
+        "A content type with this slug already exists.",
+      );
+    }
+    throw error;
+  }
+
   private toDetail(
-    ct: {
+    contentType: {
       id: string;
       siteId: string;
       name: string;
@@ -306,16 +355,18 @@ export class ContentTypesService {
     latestVersion: number | null,
   ): ContentTypeDetail {
     return {
-      id: ct.id,
-      siteId: ct.siteId,
-      name: ct.name,
-      slug: ct.slug,
-      description: ct.description,
-      status: ct.status,
-      fields: Array.isArray(ct.fields) ? (ct.fields as FieldDefinition[]) : [],
+      id: contentType.id,
+      siteId: contentType.siteId,
+      name: contentType.name,
+      slug: contentType.slug,
+      description: contentType.description,
+      status: contentType.status,
+      fields: Array.isArray(contentType.fields)
+        ? (contentType.fields as FieldDefinition[])
+        : [],
       latestVersion,
-      createdAt: ct.createdAt,
-      updatedAt: ct.updatedAt,
+      createdAt: contentType.createdAt,
+      updatedAt: contentType.updatedAt,
     };
   }
 }

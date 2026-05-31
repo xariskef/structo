@@ -22,7 +22,8 @@ Rules:
 
 - Use `DATABASE_URL` for runtime application traffic.
 - Use `DIRECT_URL` for Prisma CLI operations such as migrations.
-- Store local development values in the ignored root `.env` file.
+- Store local development values in the ignored root `.env` or `.env.local`
+  file.
 - Store deployment values in the hosting provider's secret storage.
 - Environment variables supplied by the deployment environment take
   precedence over values in the local root `.env`.
@@ -62,14 +63,15 @@ the normal workflow.
 
 ```text
 20260530221500_init_identity_tenancy
+20260531095948_add_site_settings_audit_log
 20260531113000_add_auth_sessions_invitations
+20260531120530_add_content_types
+20260531122931_add_content_entries
 ```
 
-The first migration creates the identity and tenancy foundation. The second
-adds password credentials, opaque server-side sessions and invitations. They
-were generated offline from the validated Prisma schema and have not been
-applied to Neon yet. Apply them only after adding rotated local credentials to
-the ignored root `.env`.
+The migrations create identity and tenancy, settings and audit logs,
+authentication sessions and invitations, versioned content types, and content
+entries with publish revisions.
 
 ## Neon Setup Checklist
 

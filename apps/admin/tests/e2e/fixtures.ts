@@ -16,9 +16,9 @@ export interface TestUser {
 }
 
 export const test = base.extend<{ user: TestUser; orgId: string }>({
-  user: async ({}, use) => {
+  user: async ({}, applyFixture) => {
     const email = uniqueEmail();
-    await use({
+    await applyFixture({
       name: "E2E User",
       email,
       password: "TestPassword123!",
@@ -27,7 +27,7 @@ export const test = base.extend<{ user: TestUser; orgId: string }>({
     });
   },
 
-  orgId: async ({ page, user }, use) => {
+  orgId: async ({ page, user }, applyFixture) => {
     await page.goto("/register");
     await page.getByLabel("Your name").fill(user.name);
     await page.getByLabel("Organization name").fill(user.orgName);
@@ -38,7 +38,7 @@ export const test = base.extend<{ user: TestUser; orgId: string }>({
 
     await page.waitForURL(/\/dashboard\/organizations\//);
     const orgId = page.url().split("/organizations/")[1]!.split("/")[0]!;
-    await use(orgId);
+    await applyFixture(orgId);
   },
 });
 

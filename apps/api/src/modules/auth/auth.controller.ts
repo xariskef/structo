@@ -14,6 +14,8 @@ import type { AuthenticatedUser } from "./auth.types.js";
 import { Public } from "./public.decorator.js";
 import { SessionCookieService } from "./session-cookie.service.js";
 
+const AUTH_THROTTLE_LIMIT = process.env.NODE_ENV === "test" ? 1_000 : 5;
+
 @Controller("manage/auth")
 export class AuthController {
   constructor(
@@ -24,7 +26,7 @@ export class AuthController {
   ) {}
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: 60_000 } })
   @Post("register")
   async registerOwner(
     @Body() body: unknown,
@@ -40,7 +42,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: 60_000 } })
   @Post("register-invited")
   async registerInvitedMember(
     @Body() body: unknown,
@@ -56,7 +58,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: AUTH_THROTTLE_LIMIT, ttl: 60_000 } })
   @Post("login")
   async login(
     @Body() body: unknown,

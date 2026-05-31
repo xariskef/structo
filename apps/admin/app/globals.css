@@ -48,7 +48,7 @@
   --chart-1: #245bff;
   --chart-2: #5b7cff;
   --chart-3: oklch(0.72 0.12 264);
-  --chart-4: oklch(0.42 0.20 280);
+  --chart-4: oklch(0.42 0.2 280);
   --chart-5: oklch(0.32 0.15 240);
 
   /* ── Sidebar — always dark navy ────────────────── */
@@ -90,7 +90,7 @@
   --accent-foreground: #eef1ff;
 
   /* Destructive */
-  --destructive: oklch(0.70 0.19 25);
+  --destructive: oklch(0.7 0.19 25);
 
   /* Borders & inputs */
   --border: rgb(255 255 255 / 10%);

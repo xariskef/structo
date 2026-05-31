@@ -18,7 +18,9 @@ export default function LoginPage() {
         </div>
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardTitle>
+              <h1 className="text-xl">Welcome back</h1>
+            </CardTitle>
             <CardDescription>
               Log in to enter your organization and site dashboards.
             </CardDescription>

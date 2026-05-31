@@ -6,7 +6,9 @@ test.describe("Authentication", () => {
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
       "A clean foundation",
     );
-    await expect(page.getByRole("link", { name: /Open →/ }).first()).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Open →/ }).first(),
+    ).toBeVisible();
   });
 
   test("/dashboard redirects to /login when unauthenticated", async ({
@@ -17,9 +19,7 @@ test.describe("Authentication", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("/dashboard/organizations/:id redirects to /login", async ({
-    page,
-  }) => {
+  test("/dashboard/organizations/:id redirects to /login", async ({ page }) => {
     await page.goto("/dashboard/organizations/nonexistent");
     await page.waitForURL(/\/login/);
     await expect(page).toHaveURL(/\/login/);
@@ -59,7 +59,9 @@ test.describe("Authentication", () => {
     ).toBeVisible();
     await expect(page.getByLabel("Your name")).toBeVisible();
     await expect(page.getByLabel("Organization name")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Create account" }),
+    ).toBeVisible();
     await expect(page.getByRole("link", { name: "Log in" })).toBeVisible();
   });
 

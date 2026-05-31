@@ -10,7 +10,6 @@ import {
 } from "@structo/ui/components/card";
 import { Input } from "@structo/ui/components/input";
 import { Label } from "@structo/ui/components/label";
-import { Separator } from "@structo/ui/components/separator";
 import { Textarea } from "@structo/ui/components/textarea";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";

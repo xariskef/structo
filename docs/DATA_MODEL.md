@@ -2,8 +2,9 @@
 
 ## Status
 
-The identity and tenancy foundation is implemented in the first two Prisma
-migrations. Later milestone entities remain conceptual until their feature work
+The identity, tenancy, site settings, audit log, content type and content entry
+foundations are implemented through versioned Prisma migrations. Delivery,
+media and later operational entities remain conceptual until their feature work
 begins.
 
 ## Identity And Access
@@ -202,8 +203,8 @@ is clearly distinct.
 
 ### ContentType
 
-Defines a site-specific content model such as article, product, event or team
-member.
+Defines a site-specific custom post type such as posts, articles, services,
+products, events or team members.
 
 Core fields:
 
@@ -211,12 +212,10 @@ Core fields:
 id
 siteId
 name
-singularName
-pluralName
 slug
 description?
 status
-activeVersionId?
+fieldsJson
 createdAt
 updatedAt
 
@@ -233,7 +232,7 @@ Core fields:
 id
 contentTypeId
 version
-schemaJson
+fieldsJson
 createdById
 createdAt
 
@@ -380,4 +379,7 @@ collecting visitor data.
 - Every site-scoped query checks access to the requested site.
 - Slugs are unique within the smallest meaningful tenant scope.
 - Content entries are validated against the stored content type version.
+- Incomplete entry drafts are allowed while editing.
+- Publishing requires strict validation against the referenced immutable
+  content type version.
 - Published delivery queries never return drafts.

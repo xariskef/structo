@@ -108,7 +108,11 @@ export function EntriesList({ siteId, contentTypeId }: EntriesListProps) {
           size="sm"
           onClick={() => setShowCreate((v) => !v)}
           disabled={contentTypes.length === 0}
-          title={contentTypes.length === 0 ? "Activate a content type first" : undefined}
+          title={
+            contentTypes.length === 0
+              ? "Activate a content type first"
+              : undefined
+          }
         >
           <Plus className="mr-1.5 h-4 w-4" />
           {showCreate ? "Cancel" : "New entry"}

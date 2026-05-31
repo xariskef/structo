@@ -66,9 +66,7 @@ export function ContentTypesList({ siteId }: ContentTypesListProps) {
         },
       );
 
-      router.push(
-        `/dashboard/sites/${siteId}/content-types/${ct.id}`,
-      );
+      router.push(`/dashboard/sites/${siteId}/content-types/${ct.id}`);
     } catch (e: unknown) {
       setCreateError(
         e instanceof Error ? e.message : "Unable to create content type.",
@@ -114,9 +112,10 @@ export function ContentTypesList({ siteId }: ContentTypesListProps) {
                   placeholder="Article"
                   required
                   onChange={(e) => {
-                    const slugInput = e.currentTarget.form?.querySelector<HTMLInputElement>(
-                      '[name="slug"]',
-                    );
+                    const slugInput =
+                      e.currentTarget.form?.querySelector<HTMLInputElement>(
+                        '[name="slug"]',
+                      );
                     if (slugInput && !slugInput.dataset.edited) {
                       slugInput.value = e.currentTarget.value
                         .toLowerCase()
@@ -177,7 +176,11 @@ export function ContentTypesList({ siteId }: ContentTypesListProps) {
           <p className="mt-1 text-xs text-muted-foreground/70">
             Create your first content type to start modeling your content.
           </p>
-          <Button size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
+          <Button
+            size="sm"
+            className="mt-4"
+            onClick={() => setShowCreate(true)}
+          >
             <Plus className="mr-1.5 h-4 w-4" />
             New content type
           </Button>

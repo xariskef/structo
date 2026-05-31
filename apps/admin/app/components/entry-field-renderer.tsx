@@ -35,7 +35,13 @@ export function FieldRenderer({
       return (
         <FieldWrap field={field}>
           <Input
-            type={field.type === "url" ? "url" : field.type === "email" ? "email" : "text"}
+            type={
+              field.type === "url"
+                ? "url"
+                : field.type === "email"
+                  ? "email"
+                  : "text"
+            }
             value={str}
             onChange={(e) => onChange(e.currentTarget.value)}
             disabled={disabled}
@@ -154,7 +160,9 @@ export function FieldRenderer({
       );
 
     case "select": {
-      const cfg = field.config as { options?: Array<{ label: string; value: string }> };
+      const cfg = field.config as {
+        options?: Array<{ label: string; value: string }>;
+      };
       const opts = cfg.options ?? [];
       return (
         <FieldWrap field={field}>
@@ -177,7 +185,9 @@ export function FieldRenderer({
     }
 
     case "multiSelect": {
-      const cfg = field.config as { options?: Array<{ label: string; value: string }> };
+      const cfg = field.config as {
+        options?: Array<{ label: string; value: string }>;
+      };
       const opts = cfg.options ?? [];
       const selected = Array.isArray(value) ? (value as string[]) : [];
       return (
@@ -214,9 +224,9 @@ export function FieldRenderer({
     case "group": {
       const cfg = field.config as { fields?: FieldDefinition[] };
       const groupFields = cfg.fields ?? [];
-      const groupValue = (typeof value === "object" && value !== null
-        ? value
-        : {}) as Record<string, unknown>;
+      const groupValue = (
+        typeof value === "object" && value !== null ? value : {}
+      ) as Record<string, unknown>;
 
       return (
         <FieldWrap field={field}>
@@ -231,7 +241,9 @@ export function FieldRenderer({
               />
             ))}
             {groupFields.length === 0 && (
-              <p className="text-xs text-muted-foreground">No fields in this group.</p>
+              <p className="text-xs text-muted-foreground">
+                No fields in this group.
+              </p>
             )}
           </div>
         </FieldWrap>
@@ -241,7 +253,9 @@ export function FieldRenderer({
     case "repeater": {
       const cfg = field.config as { fields?: FieldDefinition[] };
       const repeaterFields = cfg.fields ?? [];
-      const rows = Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+      const rows = Array.isArray(value)
+        ? (value as Record<string, unknown>[])
+        : [];
 
       function addRow() {
         onChange([...rows, {}]);
@@ -259,7 +273,10 @@ export function FieldRenderer({
         <FieldWrap field={field}>
           <div className="flex flex-col gap-3">
             {rows.map((row, i) => (
-              <div key={i} className="relative rounded-md border border-border bg-muted/20 p-4">
+              <div
+                key={i}
+                className="relative rounded-md border border-border bg-muted/20 p-4"
+              >
                 <button
                   type="button"
                   onClick={() => removeRow(i)}
@@ -308,8 +325,10 @@ export function FieldRenderer({
           <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-3">
             <p className="text-xs text-muted-foreground">
               {field.type === "media" && "Media field — available in Phase 7."}
-              {field.type === "gallery" && "Gallery field — available in Phase 7."}
-              {field.type === "relation" && "Relation field — available in a later phase."}
+              {field.type === "gallery" &&
+                "Gallery field — available in Phase 7."}
+              {field.type === "relation" &&
+                "Relation field — available in a later phase."}
             </p>
           </div>
         </FieldWrap>

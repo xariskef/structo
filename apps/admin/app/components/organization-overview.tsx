@@ -11,7 +11,6 @@ import {
 } from "@structo/ui/components/card";
 import { Input } from "@structo/ui/components/input";
 import { Label } from "@structo/ui/components/label";
-import { Separator } from "@structo/ui/components/separator";
 import { Globe, Plus } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
@@ -49,24 +48,24 @@ export function OrganizationOverview({
     let isActive = true;
 
     void Promise.all([
-      apiRequest<OrganizationDetail>(
-        `/manage/organizations/${organizationId}`,
-      ),
+      apiRequest<OrganizationDetail>(`/manage/organizations/${organizationId}`),
       apiRequest<SiteSummary[]>(
         `/manage/organizations/${organizationId}/sites`,
       ),
-    ]).then(([nextOrganization, nextSites]) => {
-      if (!isActive) return;
-      setOrganization(nextOrganization);
-      setSites(nextSites);
-      setError(undefined);
-    }).catch((nextError: unknown) => {
-      if (isActive) {
-        setError(
-          nextError instanceof Error ? nextError.message : "Unable to load.",
-        );
-      }
-    });
+    ])
+      .then(([nextOrganization, nextSites]) => {
+        if (!isActive) return;
+        setOrganization(nextOrganization);
+        setSites(nextSites);
+        setError(undefined);
+      })
+      .catch((nextError: unknown) => {
+        if (isActive) {
+          setError(
+            nextError instanceof Error ? nextError.message : "Unable to load.",
+          );
+        }
+      });
 
     return () => {
       isActive = false;
@@ -99,7 +98,9 @@ export function OrganizationOverview({
       );
     } catch (nextError) {
       setCreateError(
-        nextError instanceof Error ? nextError.message : "Unable to create site.",
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to create site.",
       );
     } finally {
       setIsCreating(false);

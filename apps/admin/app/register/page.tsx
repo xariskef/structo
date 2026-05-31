@@ -18,7 +18,9 @@ export default function RegisterPage() {
         </div>
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl">Create your workspace</CardTitle>
+            <CardTitle>
+              <h1 className="text-xl">Create your workspace</h1>
+            </CardTitle>
             <CardDescription>
               Registration creates your account and first organization.
             </CardDescription>

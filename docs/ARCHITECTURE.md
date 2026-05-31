@@ -2,8 +2,9 @@
 
 ## Status
 
-The modular monolith scaffold and Phase 2 identity and tenancy modules are
-implemented. Later milestone modules remain planned.
+The modular monolith scaffold, identity and tenancy, administration UI, site
+settings, custom content types and content entry modules are implemented. Core
+content hardening is in progress before delivery endpoints are added.
 
 ## System Shape
 
@@ -90,7 +91,7 @@ organization dashboard.
 
 ## Backend Modules
 
-Implemented Phase 2 modules:
+Implemented modules:
 
 ```text
 apps/api/src/modules/
@@ -101,6 +102,9 @@ apps/api/src/modules/
   organizations/
   sites/
   invitations/
+  settings/
+  content-types/
+  entries/
 ```
 
 Planned later modules:
@@ -110,9 +114,6 @@ apps/api/src/modules/
   users/
   organization-memberships/
   site-memberships/
-  settings/
-  content-types/
-  entries/
   media/
   api-tokens/
   delivery/

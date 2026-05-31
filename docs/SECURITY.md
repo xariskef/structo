@@ -34,6 +34,9 @@ Implemented authentication baseline:
 - Expire invitations after seven days and accept each invitation once.
 - Apply a global management rate limit and a stricter five-request-per-minute
   limit to registration and login endpoints.
+- Allow the Playwright-managed API process to raise the authentication limit
+  only when `NODE_ENV=test`, so browser suites remain deterministic without
+  weakening production defaults.
 
 References:
 
@@ -73,6 +76,22 @@ Site VIEWER
 Exact permissions must be represented explicitly in code rather than scattered
 role string comparisons.
 
+Implemented site permissions:
+
+```text
+site.view
+site.manage_content_types
+site.create_content
+site.edit_content
+site.publish_content
+site.manage_members
+site.manage_settings
+```
+
+Only organization owners, organization administrators and site administrators
+can change content type schemas. Editors can publish. Authors can create and
+edit drafts but cannot publish.
+
 ## Secrets
 
 - Commit placeholders only in `.env.example`.
@@ -87,7 +106,9 @@ role string comparisons.
 ## Dynamic Content
 
 - Validate field schemas before activation.
-- Validate entry data server-side before persistence.
+- Validate present draft entry values server-side before persistence.
+- Reject undeclared dynamic entry keys.
+- Validate all required values again before publishing.
 - Store rich text as structured JSON.
 - Sanitize any future HTML rendering at the frontend boundary.
 - Do not execute dynamic JavaScript stored in the database.

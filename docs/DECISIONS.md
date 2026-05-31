@@ -109,9 +109,14 @@ Use PostgreSQL with Prisma ORM and versioned migrations.
 
 ### D-105: Validation
 
-Status: proposed.
+Status: accepted.
 
-Use Zod for static DTO contracts and JSON Schema with Ajv for dynamic content.
+Use Zod for static DTO contracts and generated Zod schemas for dynamic content
+validation. Keep the dynamic schema generation inside `packages/field-kit` so
+management and future delivery behavior share one implementation.
+
+JSON Schema export can be added later if external schema interoperability
+becomes necessary. Ajv is not required for the current runtime path.
 
 ### D-106: Rich Text
 
@@ -167,12 +172,12 @@ Status: accepted.
 Apply the following brand palette across the full Tailwind CSS custom-property
 theme:
 
-| Role | Value |
-|---|---|
-| Navy (foreground, sidebar bg) | `#06163D` |
-| Blue (primary action) | `#245BFF` |
+| Role                                   | Value     |
+| -------------------------------------- | --------- |
+| Navy (foreground, sidebar bg)          | `#06163D` |
+| Blue (primary action)                  | `#245BFF` |
 | Light blue (secondary, sidebar accent) | `#5B7CFF` |
-| White | `#FFFFFF` |
+| White                                  | `#FFFFFF` |
 
 The sidebar is always dark navy regardless of light or dark mode. The primary
 action color in dark mode shifts to `#5B7CFF` for readability.
@@ -192,17 +197,33 @@ Use nested Next.js App Router layouts to provide context-aware sidebars:
 The two contexts are visually distinct through sidebar content and hierarchy
 rather than a change in base color.
 
+### D-113: Site-Scoped Custom Post Types
+
+Status: accepted.
+
+Keep the flexible custom post-type concept from the reference project. A site
+administrator creates a generic content type such as posts, articles, services,
+products or events. Entries created under that type share its versioned dynamic
+field schema.
+
+Do not add a separate database table for each editorial collection. Pages,
+articles and services are modeled through `ContentType` and `ContentEntry`
+unless a future requirement proves that a distinct entity is necessary.
+
+### D-114: Editorial Structure Before Delivery API
+
+Status: accepted.
+
+Add categories, tags and navigation menus before the first delivery API. These
+entities shape the frontend delivery contract and should not be retrofitted
+after external frontends begin consuming content.
+
 ## Open Decisions
 
 ### Q-002: Delivery Visibility
 
 Decide whether published content requires a read-only site token in all cases or
 whether sites can opt into public delivery.
-
-### Q-003: Taxonomies
-
-Decide whether categories and tags belong in the first content modeling release
-or a later milestone.
 
 ### Q-004: Analytics
 

@@ -47,6 +47,10 @@ jobs:
 
       - name: Build
         run: corepack pnpm build
+        env:
+          DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/structo
 
       - name: Test
         run: corepack pnpm test
+        env:
+          DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/structo

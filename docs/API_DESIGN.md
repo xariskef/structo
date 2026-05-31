@@ -61,8 +61,14 @@ Initial route groups:
 /sites/:siteId/settings
 /sites/:siteId/content-types
 /sites/:siteId/content-types/:contentTypeId
+/sites/:siteId/content-types/:contentTypeId/activate
+/sites/:siteId/content-types/:contentTypeId/archive
 /sites/:siteId/entries
 /sites/:siteId/entries/:entryId
+/sites/:siteId/entries/:entryId/publish
+/sites/:siteId/entries/:entryId/unpublish
+/sites/:siteId/entries/:entryId/archive
+/sites/:siteId/entries/:entryId/revisions
 /sites/:siteId/api-tokens
 /sites/:siteId/media
 /sites/:siteId/audit-logs
@@ -72,7 +78,7 @@ Initial route groups:
 Management routes require an authenticated user session and authorization for
 the requested organization or site.
 
-Implemented in Phase 2:
+Implemented management foundation:
 
 - Owner registration creates the first organization and an `OWNER` membership.
 - Login and registration set an opaque server-side session cookie.
@@ -82,6 +88,11 @@ Implemented in Phase 2:
 - Site creation requires `organization.manage_sites`.
 - Invitation creation and acceptance use one-time raw tokens whose hashes are
   persisted.
+- Site settings are validated and site-scoped.
+- Content types provide generic custom post-type collections with versioned
+  field schemas.
+- Entries support incomplete drafts, strict publishing, unpublishing, archival
+  and revision summaries.
 
 ## Delivery API
 

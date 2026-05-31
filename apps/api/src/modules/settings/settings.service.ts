@@ -4,10 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type {
-  SiteSettings,
-  UpdateSiteSettingsInput,
-} from "@structo/contracts";
+import type { SiteSettings, UpdateSiteSettingsInput } from "@structo/contracts";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { DatabaseService } from "../database/database.service.js";

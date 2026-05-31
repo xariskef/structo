@@ -1,3 +1,4 @@
+import type { FieldDefinition } from "@structo/field-kit";
 import { z } from "zod";
 
 const entrySlugSchema = z
@@ -43,6 +44,7 @@ export interface EntrySummary {
 export interface EntryDetail extends EntrySummary {
   data: Record<string, unknown>;
   contentTypeVersionId: string;
+  fields: FieldDefinition[];
   latestRevision: number | null;
 }
 

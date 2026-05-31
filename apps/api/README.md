@@ -18,11 +18,14 @@ Implemented modules:
 src/modules/
   auth/
   authorization/
+  content-types/
   database/
-  organizations/
-  sites/
-  invitations/
+  entries/
   health/
+  invitations/
+  organizations/
+  settings/
+  sites/
 ```
 
 Later modules:
@@ -32,9 +35,6 @@ src/modules/
   users/
   organization-memberships/
   site-memberships/
-  settings/
-  content-types/
-  entries/
   media/
   api-tokens/
   delivery/
@@ -43,5 +43,9 @@ src/modules/
   platform-admin/
 ```
 
-The remaining feature modules are added milestone by milestone. External NestJS
+Content types are generic site-scoped custom post types. Entries remain bound
+to an immutable activated schema version, permit incremental draft editing and
+require strict validation before publishing.
+
+The remaining feature modules are added milestone by milestone. External
 dependencies are pinned after live registry verification.

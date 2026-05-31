@@ -63,10 +63,32 @@ test("site-only collaborators cannot access an unrelated site", async () => {
     },
   });
 
-  await service.assertSitePermission("user-a", "site-a", "site.manage_content");
+  await service.assertSitePermission(
+    "user-a",
+    "site-a",
+    "site.publish_content",
+  );
 
   await assert.rejects(
     service.assertSitePermission("user-a", "site-b", "site.view"),
+    NotFoundException,
+  );
+});
+
+test("authors can edit drafts but cannot publish content", async () => {
+  const service = createService({
+    siteMemberships: {
+      "site-a:user-a": { role: "AUTHOR" },
+    },
+    sites: {
+      "site-a": { organizationId: "organization-a" },
+    },
+  });
+
+  await service.assertSitePermission("user-a", "site-a", "site.edit_content");
+
+  await assert.rejects(
+    service.assertSitePermission("user-a", "site-a", "site.publish_content"),
     NotFoundException,
   );
 });

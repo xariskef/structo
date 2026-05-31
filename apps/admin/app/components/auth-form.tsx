@@ -27,26 +27,23 @@ export function AuthForm({ mode }: AuthFormProps) {
     const formData = new FormData(event.currentTarget);
 
     try {
-      await apiRequest(
-        `/manage/auth/${isRegister ? "register" : "login"}`,
-        {
-          method: "POST",
-          body: JSON.stringify(
-            isRegister
-              ? {
-                  email: formData.get("email"),
-                  name: formData.get("name"),
-                  organizationName: formData.get("organizationName"),
-                  organizationSlug: formData.get("organizationSlug"),
-                  password: formData.get("password"),
-                }
-              : {
-                  email: formData.get("email"),
-                  password: formData.get("password"),
-                },
-          ),
-        },
-      );
+      await apiRequest(`/manage/auth/${isRegister ? "register" : "login"}`, {
+        method: "POST",
+        body: JSON.stringify(
+          isRegister
+            ? {
+                email: formData.get("email"),
+                name: formData.get("name"),
+                organizationName: formData.get("organizationName"),
+                organizationSlug: formData.get("organizationSlug"),
+                password: formData.get("password"),
+              }
+            : {
+                email: formData.get("email"),
+                password: formData.get("password"),
+              },
+        ),
+      });
 
       router.push("/dashboard");
       router.refresh();
@@ -121,11 +118,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       )}
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting
-          ? "Working…"
-          : isRegister
-            ? "Create account"
-            : "Log in"}
+        {isSubmitting ? "Working…" : isRegister ? "Create account" : "Log in"}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">

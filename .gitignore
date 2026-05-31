@@ -16,6 +16,8 @@ build/
 coverage/
 .turbo/
 /packages/database/src/generated/
+playwright-report/
+test-results/
 
 # Logs
 *.log

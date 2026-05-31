@@ -45,16 +45,18 @@ export function SiteSidebarNav({ siteId }: SiteSidebarNavProps) {
   );
 
   useEffect(() => {
-    void apiRequest<SiteDetail>(`/manage/sites/${siteId}`).then(
-      async (siteData) => {
+    void apiRequest<SiteDetail>(`/manage/sites/${siteId}`)
+      .then(async (siteData) => {
         setSite(siteData);
         const org = await apiRequest<OrganizationSummary>(
           `/manage/organizations/${siteData.organizationId}`,
         );
         setOrganization(org);
-      },
-    );
-  }, [siteId]);
+      })
+      .catch(() => {
+        router.replace("/login");
+      });
+  }, [router, siteId]);
 
   async function logout() {
     await apiRequest("/manage/auth/logout", { method: "POST" }).catch(() => {});

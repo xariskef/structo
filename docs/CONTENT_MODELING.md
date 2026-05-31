@@ -8,6 +8,24 @@ application code.
 The field system is a core product capability. It must be correct before page
 builders or other advanced presentation features are considered.
 
+## Custom Post Types
+
+Structo keeps the useful custom post-type model from the reference project.
+Each site can create collections such as:
+
+```text
+pages
+posts
+articles
+services
+products
+events
+```
+
+These are all `ContentType` records. Their individual items are
+`ContentEntry` records. New editorial collections do not require new database
+tables or application code.
+
 ## Storage Strategy
 
 Each content type has an immutable versioned schema. Each content entry stores
@@ -145,10 +163,10 @@ Validation occurs in two layers:
 1. Validate the content type schema itself.
 2. Validate each content entry against its referenced schema version.
 
-Planned tools:
+Implemented tools:
 
 - Zod for static API DTOs.
-- JSON Schema and Ajv for dynamic content schemas.
+- Zod schemas generated from active field definitions for dynamic entry data.
 
 The administration UI must not be the only validation layer.
 
@@ -157,6 +175,9 @@ The administration UI must not be the only validation layer.
 - Draft schema edits can change freely before activation.
 - Activating a changed schema creates a new immutable version.
 - Existing entries keep their original schema version until migrated.
+- Entry drafts can be incomplete while editors work on them.
+- Publishing validates every required field against the referenced immutable
+  schema version.
 - Entry edits should provide a controlled migration path when a newer content
   type version exists.
 

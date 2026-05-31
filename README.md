@@ -16,12 +16,14 @@ theme and SDK can be added later as separate packages.
 
 ## Project Status
 
-Status: Phase 2 identity and tenancy complete.
+Status: Phase 5.1 core content hardening completed. Phase 5.5 editorial
+structure is next.
 
 The repository now includes owner registration, login, server-side sessions,
-organizations, sites, invitations, tenant authorization checks and functional
-organization and site dashboard shells. Stable dependencies were verified from
-live official sources and the pnpm lockfile is present.
+organizations, sites, invitations, site settings, generic custom post types,
+versioned dynamic field schemas, content entries, publishing and functional
+organization and site dashboards. Stable dependencies were verified from live
+official sources and the pnpm lockfile is present.
 
 ## Core Product Areas
 

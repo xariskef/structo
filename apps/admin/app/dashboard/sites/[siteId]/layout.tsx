@@ -7,7 +7,10 @@ interface SiteLayoutProps {
   params: Promise<{ siteId: string }>;
 }
 
-export default async function SiteLayout({ children, params }: SiteLayoutProps) {
+export default async function SiteLayout({
+  children,
+  params,
+}: SiteLayoutProps) {
   const { siteId } = await params;
 
   return (

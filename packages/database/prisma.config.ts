@@ -6,6 +6,11 @@ config({
   path: fileURLToPath(new URL("../../.env", import.meta.url)),
 });
 
+config({
+  path: fileURLToPath(new URL("../../.env.local", import.meta.url)),
+  override: true,
+});
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {

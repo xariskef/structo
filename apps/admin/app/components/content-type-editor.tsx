@@ -5,7 +5,6 @@ import { Button } from "@structo/ui/components/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@structo/ui/components/card";
@@ -43,10 +42,7 @@ interface ContentTypeEditorProps {
   contentTypeId: string;
 }
 
-const STATUS_VARIANT: Record<
-  string,
-  "default" | "secondary" | "outline"
-> = {
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   ACTIVE: "default",
   DRAFT: "secondary",
   ARCHIVED: "outline",
@@ -62,7 +58,7 @@ function FieldTypePicker({
   onCancel: () => void;
 }) {
   return (
-    <Card className="mb-4">
+    <Card className="mb-4" role="region" aria-label="Choose field type">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm">Choose field type</CardTitle>
       </CardHeader>
@@ -203,9 +199,10 @@ function FieldRow({
                   const newLabel = e.currentTarget.value;
                   const currentKey = field.key;
                   const expectedKey = labelToKey(field.label);
-                  const autoKey = currentKey === expectedKey || currentKey === ""
-                    ? labelToKey(newLabel)
-                    : currentKey;
+                  const autoKey =
+                    currentKey === expectedKey || currentKey === ""
+                      ? labelToKey(newLabel)
+                      : currentKey;
                   if (keyRef.current && currentKey === expectedKey) {
                     keyRef.current.value = autoKey;
                   }
@@ -234,7 +231,9 @@ function FieldRow({
           <div className="grid gap-1.5">
             <Label htmlFor={`desc-${field.id}`} className="text-xs">
               Description{" "}
-              <span className="font-normal text-muted-foreground">(optional)</span>
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
             </Label>
             <Input
               id={`desc-${field.id}`}
@@ -259,7 +258,10 @@ function FieldRow({
               }
               className="h-4 w-4 rounded border-border"
             />
-            <Label htmlFor={`req-${field.id}`} className="text-xs cursor-pointer">
+            <Label
+              htmlFor={`req-${field.id}`}
+              className="text-xs cursor-pointer"
+            >
               Required
             </Label>
           </div>
@@ -293,9 +295,7 @@ function SelectOptionsEditor({
   };
   const options = config.options ?? [];
 
-  function setOptions(
-    next: Array<{ label: string; value: string }>,
-  ) {
+  function setOptions(next: Array<{ label: string; value: string }>) {
     onUpdate({ ...field, config: { ...config, options: next } });
   }
 
@@ -338,9 +338,7 @@ function SelectOptionsEditor({
         variant="outline"
         size="sm"
         className="w-fit h-7 text-xs"
-        onClick={() =>
-          setOptions([...options, { label: "", value: "" }])
-        }
+        onClick={() => setOptions([...options, { label: "", value: "" }])}
       >
         <Plus className="mr-1 h-3 w-3" />
         Add option
@@ -370,7 +368,10 @@ function NestedFieldsEditor({
     <div className="grid gap-2">
       <Label className="text-xs">Nested fields</Label>
       {nested.map((nf, i) => (
-        <div key={nf.id} className="flex items-center gap-2 rounded border border-border px-3 py-2 text-sm">
+        <div
+          key={nf.id}
+          className="flex items-center gap-2 rounded border border-border px-3 py-2 text-sm"
+        >
           <span className="flex-1 truncate font-medium">{nf.label}</span>
           <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
             {nf.key}
@@ -456,7 +457,7 @@ export function ContentTypeEditor({
     });
   }, [siteId, contentTypeId]);
 
-  async function saveFields() {
+  async function saveFields(): Promise<boolean> {
     setIsSaving(true);
     setError(undefined);
     try {
@@ -471,8 +472,10 @@ export function ContentTypeEditor({
       setFields(updated.fields);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      return true;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unable to save.");
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -482,7 +485,7 @@ export function ContentTypeEditor({
     setIsActivating(true);
     setError(undefined);
     try {
-      await saveFields();
+      if (!(await saveFields())) return;
       const updated = await apiRequest<ContentTypeDetail>(
         `/manage/sites/${siteId}/content-types/${contentTypeId}/activate`,
         { method: "POST" },
@@ -570,7 +573,9 @@ export function ContentTypeEditor({
                 onClick={saveFields}
                 disabled={isSaving}
               >
-                {isSaving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                {isSaving && (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                )}
                 Save
               </Button>
               {ct.status !== "ACTIVE" || fields.length > 0 ? (

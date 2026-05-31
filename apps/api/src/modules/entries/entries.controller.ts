@@ -90,6 +90,16 @@ export class EntriesController {
     return this.entriesService.unpublish(user.id, siteId, entryId);
   }
 
+  @Post("sites/:siteId/entries/:entryId/archive")
+  @HttpCode(200)
+  archive(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("siteId") siteId: string,
+    @Param("entryId") entryId: string,
+  ) {
+    return this.entriesService.archive(user.id, siteId, entryId);
+  }
+
   @Get("sites/:siteId/entries/:entryId/revisions")
   listRevisions(
     @CurrentUser() user: AuthenticatedUser,
