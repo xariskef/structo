@@ -33,10 +33,16 @@ test.describe("Authentication", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("/dashboard/sites/:id/content-types redirects to /login", async ({
+  test("/dashboard/sites/:id/collections redirects to /login", async ({
     page,
   }) => {
-    await page.goto("/dashboard/sites/nonexistent/content-types");
+    await page.goto("/dashboard/sites/nonexistent/collections");
+    await page.waitForURL(/\/login/);
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test("/dashboard/sites/:id/pages redirects to /login", async ({ page }) => {
+    await page.goto("/dashboard/sites/nonexistent/pages");
     await page.waitForURL(/\/login/);
     await expect(page).toHaveURL(/\/login/);
   });

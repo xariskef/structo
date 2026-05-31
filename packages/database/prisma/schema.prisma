@@ -156,16 +156,24 @@ enum ContentEntryStatus {
   ARCHIVED
 }
 
+enum ContentTypeKind {
+  COLLECTION
+  SINGLE
+}
+
 model ContentType {
-  id          String            @id @default(cuid())
-  siteId      String
-  name        String
-  slug        String
-  description String?
-  status      ContentTypeStatus @default(DRAFT)
-  fields      Json              @default("[]")
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id           String            @id @default(cuid())
+  siteId       String
+  kind         ContentTypeKind   @default(COLLECTION)
+  name         String
+  singularName String?
+  pluralName   String?
+  slug         String
+  description  String?
+  status       ContentTypeStatus @default(DRAFT)
+  fields       Json              @default("[]")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   site     Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
   versions ContentTypeVersion[]

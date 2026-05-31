@@ -246,23 +246,34 @@ export const activatableContentTypeFieldsSchema: z.ZodType<FieldDefinition[]> =
 
 // Content type CRUD schemas
 
+export const contentTypeKindSchema = z.enum(["COLLECTION", "SINGLE"]);
+export type ContentTypeKind = z.infer<typeof contentTypeKindSchema>;
+
+const contentTypeSlugSchema = z
+  .string()
+  .regex(
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    "Slug must be lowercase letters, numbers and hyphens.",
+  );
+
 export const createContentTypeSchema = z.object({
+  // A collection holds many items (Articles, Products). A single is one
+  // standalone page (Home, About).
+  kind: contentTypeKindSchema.default("COLLECTION"),
   name: z.string().min(1).max(100),
-  slug: z
-    .string()
-    .regex(
-      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-      "Slug must be lowercase letters, numbers and hyphens.",
-    ),
+  // Human labels used across the admin UI. Optional; the API derives sensible
+  // defaults from `name` when omitted.
+  singularName: z.string().min(1).max(100).optional(),
+  pluralName: z.string().min(1).max(100).optional(),
+  slug: contentTypeSlugSchema,
   description: z.string().max(500).optional(),
 });
 
 export const updateContentTypeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  slug: z
-    .string()
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-    .optional(),
+  singularName: z.string().min(1).max(100).optional(),
+  pluralName: z.string().min(1).max(100).optional(),
+  slug: contentTypeSlugSchema.optional(),
   description: z.string().max(500).optional(),
   fields: contentTypeFieldsSchema.optional(),
 });
@@ -275,10 +286,17 @@ export type UpdateContentTypeInput = z.infer<typeof updateContentTypeSchema>;
 export interface ContentTypeSummary {
   id: string;
   siteId: string;
+  kind: ContentTypeKind;
   name: string;
+  singularName: string;
+  pluralName: string;
   slug: string;
   status: "DRAFT" | "ACTIVE" | "ARCHIVED";
   fieldCount: number;
+  // For single pages this is the id of the one backing item (null until first
+  // opened). Collections leave this null.
+  singleEntryId: string | null;
+  itemCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -286,12 +304,16 @@ export interface ContentTypeSummary {
 export interface ContentTypeDetail {
   id: string;
   siteId: string;
+  kind: ContentTypeKind;
   name: string;
+  singularName: string;
+  pluralName: string;
   slug: string;
   description: string | null;
   status: "DRAFT" | "ACTIVE" | "ARCHIVED";
   fields: FieldDefinition[];
   latestVersion: number | null;
+  singleEntryId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

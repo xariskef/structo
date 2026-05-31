@@ -45,6 +45,21 @@ export class EntriesController {
     );
   }
 
+  // Get-or-create the single item backing a single page.
+  @Post("sites/:siteId/content-types/:contentTypeId/single")
+  @HttpCode(200)
+  resolveSingle(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("siteId") siteId: string,
+    @Param("contentTypeId") contentTypeId: string,
+  ) {
+    return this.entriesService.getOrCreateSingle(
+      user.id,
+      siteId,
+      contentTypeId,
+    );
+  }
+
   @Get("sites/:siteId/entries/:entryId")
   get(
     @CurrentUser() user: AuthenticatedUser,

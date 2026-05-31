@@ -10,7 +10,7 @@ import {
 } from "@structo/ui/components/card";
 import { Input } from "@structo/ui/components/input";
 import { Label } from "@structo/ui/components/label";
-import type { ContentTypeSummary, EntrySummary } from "@structo/contracts";
+import type { ContentTypeSummary } from "@structo/contracts";
 import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,72 +18,64 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import { apiRequest } from "../lib/api";
 
-interface EntriesListProps {
+interface PagesListProps {
   siteId: string;
-  contentTypeId?: string;
 }
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
-  PUBLISHED: "default",
+  ACTIVE: "default",
   DRAFT: "secondary",
   ARCHIVED: "outline",
 };
 
-function labelToSlug(title: string): string {
-  return title
+function slugify(value: string): string {
+  return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
 
-export function EntriesList({ siteId, contentTypeId }: EntriesListProps) {
+export function PagesList({ siteId }: PagesListProps) {
   const router = useRouter();
-  const [entries, setEntries] = useState<EntrySummary[]>([]);
-  const [contentTypes, setContentTypes] = useState<ContentTypeSummary[]>([]);
+  const [pages, setPages] = useState<ContentTypeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string>();
-  const [selectedCtId, setSelectedCtId] = useState(contentTypeId ?? "");
 
   useEffect(() => {
-    const qs = contentTypeId ? `?contentTypeId=${contentTypeId}` : "";
-    void Promise.all([
-      apiRequest<EntrySummary[]>(`/manage/sites/${siteId}/entries${qs}`),
-      apiRequest<ContentTypeSummary[]>(`/manage/sites/${siteId}/content-types`),
-    ])
-      .then(([e, cts]) => {
-        setEntries(e);
-        // Only show ACTIVE content types for entry creation
-        setContentTypes(cts.filter((ct) => ct.status === "ACTIVE"));
-      })
+    void apiRequest<ContentTypeSummary[]>(
+      `/manage/sites/${siteId}/content-types?kind=SINGLE`,
+    )
+      .then(setPages)
       .finally(() => setLoading(false));
-  }, [siteId, contentTypeId]);
+  }, [siteId]);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsCreating(true);
     setCreateError(undefined);
     const data = new FormData(event.currentTarget);
+    const name = String(data.get("name"));
 
     try {
-      const entry = await apiRequest<EntrySummary>(
-        `/manage/sites/${siteId}/entries`,
+      const created = await apiRequest<ContentTypeSummary>(
+        `/manage/sites/${siteId}/content-types`,
         {
           method: "POST",
           body: JSON.stringify({
-            contentTypeId: data.get("contentTypeId"),
-            title: data.get("title"),
+            kind: "SINGLE",
+            name,
+            singularName: name,
+            pluralName: name,
             slug: data.get("slug"),
-            data: {},
           }),
         },
       );
-
-      router.push(`/dashboard/sites/${siteId}/entries/${entry.id}`);
+      router.push(`/dashboard/sites/${siteId}/pages/${created.id}`);
     } catch (e: unknown) {
       setCreateError(
-        e instanceof Error ? e.message : "Unable to create entry.",
+        e instanceof Error ? e.message : "Unable to create page.",
       );
       setIsCreating(false);
     }
@@ -98,95 +90,62 @@ export function EntriesList({ siteId, contentTypeId }: EntriesListProps) {
             Content
           </p>
           <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">
-            Entries
+            Pages
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create and manage content for this site.
+            Standalone pages with their own fields — home, about, contact, and
+            other one-off layouts.
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setShowCreate((v) => !v)}
-          disabled={contentTypes.length === 0}
-          title={
-            contentTypes.length === 0
-              ? "Activate a content type first"
-              : undefined
-          }
-        >
+        <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
           <Plus className="mr-1.5 h-4 w-4" />
-          {showCreate ? "Cancel" : "New entry"}
+          {showCreate ? "Cancel" : "New page"}
         </Button>
       </div>
 
-      {/* No active content types warning */}
-      {contentTypes.length === 0 && !loading && (
-        <div className="mb-6 rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
-          You need at least one{" "}
-          <Link
-            href={`/dashboard/sites/${siteId}/content-types`}
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
-            active content type
-          </Link>{" "}
-          before creating entries.
-        </div>
-      )}
-
       {/* Create form */}
-      {showCreate && contentTypes.length > 0 && (
+      {showCreate && (
         <Card className="mb-6">
           <CardHeader className="pb-4">
-            <CardTitle className="text-base">New entry</CardTitle>
+            <CardTitle className="text-base">New page</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
               <div className="grid gap-1.5">
-                <Label htmlFor="ct-select">Content type</Label>
-                <select
-                  id="ct-select"
-                  name="contentTypeId"
-                  value={selectedCtId}
-                  onChange={(e) => setSelectedCtId(e.currentTarget.value)}
-                  required
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">Select content type…</option>
-                  {contentTypes.map((ct) => (
-                    <option key={ct.id} value={ct.id}>
-                      {ct.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="entry-title">Title</Label>
+                <Label htmlFor="page-name">
+                  Name{" "}
+                  <span className="font-normal text-muted-foreground">
+                    e.g. About
+                  </span>
+                </Label>
                 <Input
-                  id="entry-title"
-                  name="title"
+                  id="page-name"
+                  name="name"
+                  placeholder="About"
                   required
                   onChange={(e) => {
-                    const slugInput =
+                    const slug =
                       e.currentTarget.form?.querySelector<HTMLInputElement>(
                         '[name="slug"]',
                       );
-                    if (slugInput && !slugInput.dataset.edited) {
-                      slugInput.value = labelToSlug(e.currentTarget.value);
+                    if (slug && !slug.dataset.edited) {
+                      slug.value = slugify(e.currentTarget.value);
                     }
                   }}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="entry-slug">
+                <Label htmlFor="page-slug">
                   Slug{" "}
                   <span className="font-normal text-muted-foreground">
-                    (auto-derived)
+                    (lowercase, hyphens)
                   </span>
                 </Label>
                 <Input
-                  id="entry-slug"
+                  id="page-slug"
                   name="slug"
                   pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                  placeholder="about"
                   required
                   onInput={(e) => {
                     e.currentTarget.dataset.edited = "1";
@@ -198,7 +157,7 @@ export function EntriesList({ siteId, contentTypeId }: EntriesListProps) {
               )}
               <div>
                 <Button type="submit" size="sm" disabled={isCreating}>
-                  {isCreating ? "Creating…" : "Create entry"}
+                  {isCreating ? "Creating…" : "Create and configure"}
                 </Button>
               </div>
             </form>
@@ -206,53 +165,48 @@ export function EntriesList({ siteId, contentTypeId }: EntriesListProps) {
         </Card>
       )}
 
-      {/* Entry list */}
+      {/* List */}
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : entries.length === 0 && !showCreate ? (
+      ) : pages.length === 0 && !showCreate ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16 text-center">
           <FileText className="mb-3 h-8 w-8 text-muted-foreground/40" />
           <p className="text-sm font-medium text-muted-foreground">
-            No entries yet
+            No pages yet
           </p>
           <p className="mt-1 text-xs text-muted-foreground/70">
-            Create your first entry to start adding content.
+            Create your first page, such as a home or about page.
           </p>
-          {contentTypes.length > 0 && (
-            <Button
-              size="sm"
-              className="mt-4"
-              onClick={() => setShowCreate(true)}
-            >
-              <Plus className="mr-1.5 h-4 w-4" />
-              New entry
-            </Button>
-          )}
+          <Button size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            New page
+          </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {entries.map((entry) => (
+          {pages.map((page) => (
             <Link
-              key={entry.id}
-              href={`/dashboard/sites/${siteId}/entries/${entry.id}`}
+              key={page.id}
+              href={`/dashboard/sites/${siteId}/pages/${page.id}`}
               className="group flex items-center justify-between rounded-lg border border-border bg-card px-5 py-4 transition-colors hover:border-primary/40 hover:bg-accent/20"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
                   <p className="truncate font-medium text-card-foreground">
-                    {entry.title}
+                    {page.name}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {entry.contentTypeName} · {entry.slug}
+                    /{page.slug} · {page.fieldCount} field
+                    {page.fieldCount !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
               <Badge
-                variant={STATUS_VARIANT[entry.status] ?? "secondary"}
+                variant={STATUS_VARIANT[page.status] ?? "secondary"}
                 className="ml-4 shrink-0 text-[10px]"
               >
-                {entry.status}
+                {page.status}
               </Badge>
             </Link>
           ))}

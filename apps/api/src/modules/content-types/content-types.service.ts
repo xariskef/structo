@@ -8,6 +8,7 @@ import {
 import {
   activatableContentTypeFieldsSchema,
   type ContentTypeDetail,
+  type ContentTypeKind,
   type ContentTypeSummary,
   type CreateContentTypeInput,
   type UpdateContentTypeInput,
@@ -16,6 +17,25 @@ import type { FieldDefinition } from "@structo/field-kit";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { DatabaseService } from "../database/database.service.js";
+
+// Shape returned by the queries below: a content type row plus the relation
+// data needed to build summaries and details.
+type ContentTypeRow = {
+  id: string;
+  siteId: string;
+  kind: ContentTypeKind;
+  name: string;
+  singularName: string | null;
+  pluralName: string | null;
+  slug: string;
+  description: string | null;
+  status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+  fields: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+  entries?: { id: string }[];
+  _count?: { entries: number };
+};
 
 @Injectable()
 export class ContentTypesService {
@@ -26,7 +46,11 @@ export class ContentTypesService {
     private readonly authorizationService: AuthorizationService,
   ) {}
 
-  async list(userId: string, siteId: string): Promise<ContentTypeSummary[]> {
+  async list(
+    userId: string,
+    siteId: string,
+    kind?: ContentTypeKind,
+  ): Promise<ContentTypeSummary[]> {
     await this.authorizationService.assertSitePermission(
       userId,
       siteId,
@@ -34,22 +58,19 @@ export class ContentTypesService {
     );
 
     const rows = await this.db.client.contentType.findMany({
-      where: { siteId },
+      where: { siteId, ...(kind ? { kind } : {}) },
       orderBy: { name: "asc" },
+      include: {
+        _count: { select: { entries: true } },
+        entries: {
+          select: { id: true },
+          orderBy: { createdAt: "asc" },
+          take: 1,
+        },
+      },
     });
 
-    return rows.map((contentType) => ({
-      id: contentType.id,
-      siteId: contentType.siteId,
-      name: contentType.name,
-      slug: contentType.slug,
-      status: contentType.status,
-      fieldCount: Array.isArray(contentType.fields)
-        ? contentType.fields.length
-        : 0,
-      createdAt: contentType.createdAt,
-      updatedAt: contentType.updatedAt,
-    }));
+    return rows.map((row) => this.toSummary(row as ContentTypeRow));
   }
 
   async create(
@@ -64,6 +85,8 @@ export class ContentTypesService {
     );
 
     const site = await this.findSite(siteId);
+    const singularName = input.singularName ?? input.name;
+    const pluralName = input.pluralName ?? input.name;
 
     try {
       const contentType = await this.db.client.$transaction(
@@ -71,7 +94,10 @@ export class ContentTypesService {
           const created = await transaction.contentType.create({
             data: {
               siteId,
+              kind: input.kind,
               name: input.name,
+              singularName,
+              pluralName,
               slug: input.slug,
               description: input.description ?? null,
               fields: [],
@@ -86,7 +112,11 @@ export class ContentTypesService {
               action: "content_type.create",
               entityType: "ContentType",
               entityId: created.id,
-              metadata: { name: created.name, slug: created.slug },
+              metadata: {
+                kind: created.kind,
+                name: created.name,
+                slug: created.slug,
+              },
             },
           });
 
@@ -94,7 +124,7 @@ export class ContentTypesService {
         },
       );
 
-      return this.toDetail(contentType, null);
+      return this.toDetail(contentType as ContentTypeRow, null, null);
     } catch (error: unknown) {
       this.throwSlugConflict(error);
     }
@@ -119,6 +149,11 @@ export class ContentTypesService {
           take: 1,
           select: { version: true },
         },
+        entries: {
+          select: { id: true },
+          orderBy: { createdAt: "asc" },
+          take: 1,
+        },
       },
     });
 
@@ -126,7 +161,11 @@ export class ContentTypesService {
       throw new NotFoundException("Content type not found.");
     }
 
-    return this.toDetail(contentType, contentType.versions[0]?.version ?? null);
+    return this.toDetail(
+      contentType as ContentTypeRow,
+      contentType.versions[0]?.version ?? null,
+      contentType.entries[0]?.id ?? null,
+    );
   }
 
   async update(
@@ -160,6 +199,12 @@ export class ContentTypesService {
           where: { id: contentTypeId },
           data: {
             ...(input.name !== undefined ? { name: input.name } : {}),
+            ...(input.singularName !== undefined
+              ? { singularName: input.singularName }
+              : {}),
+            ...(input.pluralName !== undefined
+              ? { pluralName: input.pluralName }
+              : {}),
             ...(input.slug !== undefined ? { slug: input.slug } : {}),
             ...(input.description !== undefined
               ? { description: input.description }
@@ -235,17 +280,10 @@ export class ContentTypesService {
 
     const nextVersion = (contentType.versions[0]?.version ?? 0) + 1;
 
-    const [updated] = await this.db.client.$transaction([
+    await this.db.client.$transaction([
       this.db.client.contentType.update({
         where: { id: contentTypeId },
         data: { status: "ACTIVE" },
-        include: {
-          versions: {
-            orderBy: { version: "desc" },
-            take: 1,
-            select: { version: true },
-          },
-        },
       }),
       this.db.client.contentTypeVersion.create({
         data: {
@@ -268,7 +306,7 @@ export class ContentTypesService {
       }),
     ]);
 
-    return this.toDetail(updated, nextVersion);
+    return this.get(userId, siteId, contentTypeId);
   }
 
   async archive(
@@ -291,17 +329,10 @@ export class ContentTypesService {
       throw new NotFoundException("Content type not found.");
     }
 
-    const [updated] = await this.db.client.$transaction([
+    await this.db.client.$transaction([
       this.db.client.contentType.update({
         where: { id: contentTypeId },
         data: { status: "ARCHIVED" },
-        include: {
-          versions: {
-            orderBy: { version: "desc" },
-            take: 1,
-            select: { version: true },
-          },
-        },
       }),
       this.db.client.auditLog.create({
         data: {
@@ -315,7 +346,7 @@ export class ContentTypesService {
       }),
     ]);
 
-    return this.toDetail(updated, updated.versions[0]?.version ?? null);
+    return this.get(userId, siteId, contentTypeId);
   }
 
   private async findSite(siteId: string): Promise<{ organizationId: string }> {
@@ -340,33 +371,47 @@ export class ContentTypesService {
     throw error;
   }
 
+  private toSummary(row: ContentTypeRow): ContentTypeSummary {
+    return {
+      id: row.id,
+      siteId: row.siteId,
+      kind: row.kind,
+      name: row.name,
+      singularName: row.singularName ?? row.name,
+      pluralName: row.pluralName ?? row.name,
+      slug: row.slug,
+      status: row.status,
+      fieldCount: Array.isArray(row.fields) ? row.fields.length : 0,
+      singleEntryId:
+        row.kind === "SINGLE" ? (row.entries?.[0]?.id ?? null) : null,
+      itemCount: row._count?.entries ?? 0,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
   private toDetail(
-    contentType: {
-      id: string;
-      siteId: string;
-      name: string;
-      slug: string;
-      description: string | null;
-      status: "DRAFT" | "ACTIVE" | "ARCHIVED";
-      fields: unknown;
-      createdAt: Date;
-      updatedAt: Date;
-    },
+    row: ContentTypeRow,
     latestVersion: number | null,
+    singleEntryId: string | null,
   ): ContentTypeDetail {
     return {
-      id: contentType.id,
-      siteId: contentType.siteId,
-      name: contentType.name,
-      slug: contentType.slug,
-      description: contentType.description,
-      status: contentType.status,
-      fields: Array.isArray(contentType.fields)
-        ? (contentType.fields as FieldDefinition[])
+      id: row.id,
+      siteId: row.siteId,
+      kind: row.kind,
+      name: row.name,
+      singularName: row.singularName ?? row.name,
+      pluralName: row.pluralName ?? row.name,
+      slug: row.slug,
+      description: row.description,
+      status: row.status,
+      fields: Array.isArray(row.fields)
+        ? (row.fields as FieldDefinition[])
         : [],
       latestVersion,
-      createdAt: contentType.createdAt,
-      updatedAt: contentType.updatedAt,
+      singleEntryId: row.kind === "SINGLE" ? singleEntryId : null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     };
   }
 }

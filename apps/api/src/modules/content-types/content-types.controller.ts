@@ -7,10 +7,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from "@nestjs/common";
 import {
+  contentTypeKindSchema,
   createContentTypeSchema,
   updateContentTypeSchema,
+  type ContentTypeKind,
 } from "@structo/contracts";
 
 import { parseInput } from "../../common/validation/parse-input.js";
@@ -29,8 +32,11 @@ export class ContentTypesController {
   list(
     @CurrentUser() user: AuthenticatedUser,
     @Param("siteId") siteId: string,
+    @Query("kind") kind?: string,
   ) {
-    return this.contentTypesService.list(user.id, siteId);
+    const parsedKind: ContentTypeKind | undefined =
+      kind === undefined ? undefined : contentTypeKindSchema.parse(kind);
+    return this.contentTypesService.list(user.id, siteId, parsedKind);
   }
 
   @Post("sites/:siteId/content-types")

@@ -218,6 +218,25 @@ Add categories, tags and navigation menus before the first delivery API. These
 entities shape the frontend delivery contract and should not be retrofitted
 after external frontends begin consuming content.
 
+### D-113: Collections And Pages
+
+Status: accepted.
+
+Content types carry a `kind`:
+
+- `COLLECTION` holds many items (articles, products, services). It maps to the
+  WordPress "custom post type" idea.
+- `SINGLE` is one standalone page (home, about, contact) backed by exactly one
+  item.
+
+Both kinds share the same `ContentType` + `ContentTypeVersion` + `ContentEntry`
+storage and the same dynamic field system. The distinction is enforced in the
+service layer (a single page rejects a second item) and surfaced in the
+administration UI as two areas: Collections and Pages.
+
+Content types also carry `singularName` and `pluralName` so the UI can use
+natural labels ("New Article") instead of the technical word "entry".
+
 ## Open Decisions
 
 ### Q-002: Delivery Visibility

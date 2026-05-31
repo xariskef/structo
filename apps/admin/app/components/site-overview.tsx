@@ -7,7 +7,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@structo/ui/components/card";
-import { FileText, ImageIcon, Settings, Type, Users } from "lucide-react";
+import {
+  FileText,
+  ImageIcon,
+  Layers,
+  Settings,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { apiRequest } from "../lib/api";
@@ -24,38 +31,45 @@ interface SiteOverviewProps {
   siteId: string;
 }
 
-const UPCOMING = [
+interface AreaCard {
+  icon: typeof Layers;
+  title: string;
+  description: string;
+  href: string | null;
+}
+
+const AREAS: AreaCard[] = [
   {
-    icon: Type,
-    title: "Content Types",
-    description: "Define the structure of your content.",
-    href: "content-types",
+    icon: Layers,
+    title: "Collections",
+    description: "Repeatable content types — articles, products, services.",
+    href: "collections",
   },
   {
     icon: FileText,
-    title: "Entries",
-    description: "Create and publish content entries.",
-    href: "entries",
+    title: "Pages",
+    description: "Standalone pages such as home, about and contact.",
+    href: "pages",
+  },
+  {
+    icon: Settings,
+    title: "Settings",
+    description: "Locale, timezone, SEO defaults and branding.",
+    href: "settings",
   },
   {
     icon: ImageIcon,
     title: "Media",
     description: "Upload and manage site media.",
-    href: "media",
+    href: null,
   },
   {
     icon: Users,
     title: "Members",
     description: "Invite collaborators to this site.",
-    href: "members",
+    href: null,
   },
-  {
-    icon: Settings,
-    title: "Settings",
-    description: "Configure locale, timezone and more.",
-    href: "settings",
-  },
-] as const;
+];
 
 export function SiteOverview({ siteId }: SiteOverviewProps) {
   const [site, setSite] = useState<SiteDetail>();
@@ -97,24 +111,46 @@ export function SiteOverview({ siteId }: SiteOverviewProps) {
         </p>
       )}
 
-      {/* Upcoming features grid */}
+      {/* Areas grid */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {UPCOMING.map(({ icon: Icon, title, description }) => (
-          <Card key={title} className="border-dashed opacity-60">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Icon className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">{description}</p>
-              <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/50">
-                Next milestone
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+        {AREAS.map(({ icon: Icon, title, description, href }) => {
+          const card = (
+            <Card
+              className={
+                href
+                  ? "h-full transition-colors hover:border-primary/40 hover:bg-accent/20"
+                  : "h-full border-dashed opacity-60"
+              }
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">{description}</p>
+                {!href && (
+                  <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/50">
+                    Coming soon
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          );
+
+          return href ? (
+            <Link
+              key={title}
+              href={`/dashboard/sites/${siteId}/${href}`}
+              className="block"
+            >
+              {card}
+            </Link>
+          ) : (
+            <div key={title}>{card}</div>
+          );
+        })}
       </div>
     </div>
   );

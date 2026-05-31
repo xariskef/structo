@@ -24,6 +24,10 @@ import { FieldRenderer } from "./entry-field-renderer";
 interface EntryEditorProps {
   siteId: string;
   entryId: string;
+  // Optional breadcrumb back to the owning collection. Omitted for single
+  // pages, where the page view already provides context.
+  backHref?: string;
+  backLabel?: string;
 }
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
@@ -39,7 +43,12 @@ function labelToSlug(title: string): string {
     .replace(/^-|-$/g, "");
 }
 
-export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
+export function EntryEditor({
+  siteId,
+  entryId,
+  backHref,
+  backLabel,
+}: EntryEditorProps) {
   const [entry, setEntry] = useState<EntryDetail | null>(null);
   const [data, setData] = useState<Record<string, unknown>>({});
   const [title, setTitle] = useState("");
@@ -169,36 +178,35 @@ export function EntryEditor({ siteId, entryId }: EntryEditorProps) {
 
   return (
     <div className="max-w-2xl">
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <div className="mb-1 flex items-center gap-1.5">
-            <Link
-              href={`/dashboard/sites/${siteId}/entries`}
-              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Entries
-            </Link>
-            <span className="text-[11px] text-muted-foreground">/</span>
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {entry.contentTypeName}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {entry.title}
-            </h1>
-            <Badge
-              variant={STATUS_VARIANT[entry.status] ?? "secondary"}
-              className="text-[10px]"
-            >
-              {entry.status}
-            </Badge>
-          </div>
+      {/* Optional breadcrumb back to the owning collection */}
+      {backHref && (
+        <div className="mb-3 flex items-center gap-1.5">
+          <Link
+            href={backHref}
+            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {backLabel ?? entry.contentTypeName}
+          </Link>
+          <span className="text-[11px] text-muted-foreground">/</span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            {entry.title}
+          </span>
+        </div>
+      )}
+
+      {/* Action bar */}
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Badge
+            variant={STATUS_VARIANT[entry.status] ?? "secondary"}
+            className="text-[10px]"
+          >
+            {entry.status}
+          </Badge>
           {entry.latestRevision !== null && (
-            <p className="text-sm text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               v{entry.latestRevision}
-            </p>
+            </span>
           )}
         </div>
 

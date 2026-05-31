@@ -203,15 +203,24 @@ is clearly distinct.
 
 ### ContentType
 
-Defines a site-specific custom post type such as posts, articles, services,
-products, events or team members.
+Defines a site-specific content type. Its `kind` decides how it behaves:
+
+- `COLLECTION` is a custom post type holding many items (posts, articles,
+  services, products, events, team members).
+- `SINGLE` is a standalone page (home, about, contact) backed by exactly one
+  item.
+
+`singularName` and `pluralName` provide natural administration labels.
 
 Core fields:
 
 ```text
 id
 siteId
+kind            COLLECTION | SINGLE
 name
+singularName?
+pluralName?
 slug
 description?
 status

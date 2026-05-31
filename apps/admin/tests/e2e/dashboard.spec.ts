@@ -49,9 +49,9 @@ test.describe("Site dashboard", () => {
     await expect(sidebar).toContainText("Content");
     await expect(sidebar).toContainText("Administration");
     await expect(
-      page.getByRole("link", { name: "Content Types" }),
+      page.getByRole("link", { name: "Collections" }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Entries" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Pages" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Media" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Members" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
@@ -71,13 +71,23 @@ test.describe("Site dashboard", () => {
     await expect(page.getByText("Saved")).toBeVisible();
   });
 
-  test("content types page loads with empty state", async ({ page }) => {
-    await page.getByRole("link", { name: "Content Types" }).click();
+  test("collections page loads with empty state", async ({ page }) => {
+    await page.getByRole("link", { name: "Collections" }).click();
     await expect(
-      page.getByRole("heading", { name: "Content Types" }),
+      page.getByRole("heading", { name: "Collections" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "New content type" }).first(),
+      page.getByRole("button", { name: "New collection" }).first(),
+    ).toBeVisible();
+  });
+
+  test("pages page loads with empty state", async ({ page }) => {
+    await page.getByRole("link", { name: "Pages" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Pages" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "New page" }).first(),
     ).toBeVisible();
   });
 });

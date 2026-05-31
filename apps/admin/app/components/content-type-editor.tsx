@@ -32,7 +32,6 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { apiRequest } from "../lib/api";
@@ -40,13 +39,10 @@ import { apiRequest } from "../lib/api";
 interface ContentTypeEditorProps {
   siteId: string;
   contentTypeId: string;
+  // Notified whenever the content type is saved or activated so a parent tab
+  // header can reflect the new status/version.
+  onContentTypeChange?: (contentType: ContentTypeDetail) => void;
 }
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
-  ACTIVE: "default",
-  DRAFT: "secondary",
-  ARCHIVED: "outline",
-};
 
 // ── Field type picker ────────────────────────────────────────────────────
 
@@ -439,6 +435,7 @@ function NestedFieldsEditor({
 export function ContentTypeEditor({
   siteId,
   contentTypeId,
+  onContentTypeChange,
 }: ContentTypeEditorProps) {
   const [ct, setCt] = useState<ContentTypeDetail | null>(null);
   const [fields, setFields] = useState<FieldDefinition[]>([]);
@@ -470,6 +467,7 @@ export function ContentTypeEditor({
       );
       setCt(updated);
       setFields(updated.fields);
+      onContentTypeChange?.(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       return true;
@@ -491,6 +489,7 @@ export function ContentTypeEditor({
         { method: "POST" },
       );
       setCt(updated);
+      onContentTypeChange?.(updated);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unable to activate.");
     } finally {
@@ -534,35 +533,13 @@ export function ContentTypeEditor({
 
   return (
     <div className="max-w-3xl">
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Link
-              href={`/dashboard/sites/${siteId}/content-types`}
-              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Content Types
-            </Link>
-            <span className="text-[11px] text-muted-foreground">/</span>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {ct.name}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{ct.name}</h1>
-            <Badge
-              variant={STATUS_VARIANT[ct.status] ?? "secondary"}
-              className="text-[10px]"
-            >
-              {ct.status}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {ct.slug}
-            {ct.latestVersion !== null ? ` · v${ct.latestVersion}` : ""}
-          </p>
-        </div>
+      {/* Action bar */}
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <p className="text-sm text-muted-foreground">
+          {ct.latestVersion !== null
+            ? `Published structure: v${ct.latestVersion}`
+            : "Draft — not yet activated"}
+        </p>
 
         <div className="flex shrink-0 items-center gap-2">
           {ct.status !== "ARCHIVED" && (
@@ -576,7 +553,7 @@ export function ContentTypeEditor({
                 {isSaving && (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                 )}
-                Save
+                Save structure
               </Button>
               {ct.status !== "ACTIVE" || fields.length > 0 ? (
                 <Button

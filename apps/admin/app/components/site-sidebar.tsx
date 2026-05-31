@@ -4,10 +4,10 @@ import {
   ChevronLeft,
   FileText,
   ImageIcon,
+  Layers,
   LayoutDashboard,
   LogOut,
   Settings,
-  Type,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -127,13 +127,13 @@ export function SiteSidebarNav({ siteId }: SiteSidebarNavProps) {
             Content
           </p>
           <div className="flex flex-col gap-0.5">
-            <NavLink href={`${base}/content-types`}>
-              <Type className="h-4 w-4 shrink-0" />
-              Content Types
+            <NavLink href={`${base}/collections`}>
+              <Layers className="h-4 w-4 shrink-0" />
+              Collections
             </NavLink>
-            <NavLink href={`${base}/entries`}>
+            <NavLink href={`${base}/pages`}>
               <FileText className="h-4 w-4 shrink-0" />
-              Entries
+              Pages
             </NavLink>
             <NavLink href={`${base}/media`}>
               <ImageIcon className="h-4 w-4 shrink-0" />

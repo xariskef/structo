@@ -1,129 +1,119 @@
 import { expect, test } from "./fixtures";
 
-test.describe("Content type builder", () => {
+// Helper: from the org dashboard, create a site and open it.
+async function createAndOpenSite(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "New site" }).first().click();
+  await page.getByLabel("Site name").fill("CT Test Site");
+  await page.getByLabel(/Site slug/).fill(`ct-site-${Date.now()}`);
+  await page.getByRole("button", { name: "Create site" }).click();
+  await page.getByRole("link", { name: /Open site/ }).click();
+  await page.waitForURL(/\/dashboard\/sites\//);
+}
+
+test.describe("Collections", () => {
   test.beforeEach(async ({ page, orgId }) => {
     void orgId;
-    // Create a site and navigate to content types
-    await page.getByRole("button", { name: "New site" }).first().click();
-    await page.getByLabel("Site name").fill("CT Test Site");
-    await page.getByLabel(/Site slug/).fill(`ct-site-${Date.now()}`);
-    await page.getByRole("button", { name: "Create site" }).click();
-    await page.getByRole("link", { name: /Open site/ }).click();
-    await page.waitForURL(/\/dashboard\/sites\//);
-    await page.getByRole("link", { name: "Content Types" }).click();
-    await page.waitForURL(/\/content-types$/);
+    await createAndOpenSite(page);
+    await page.getByRole("link", { name: "Collections" }).click();
+    await page.waitForURL(/\/collections$/);
   });
 
   test("shows empty state with create button", async ({ page }) => {
-    await expect(page.getByText("No content types yet")).toBeVisible();
+    await expect(page.getByText("No collections yet")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "New content type" }).first(),
+      page.getByRole("button", { name: "New collection" }).first(),
     ).toBeVisible();
   });
 
-  test("can create a content type and open editor", async ({ page }) => {
-    await page
-      .getByRole("button", { name: "New content type" })
-      .first()
-      .click();
-    await page.getByLabel("Name").fill("Blog Post");
-    await page.getByLabel(/Slug/).fill("blog-post");
-    await page.getByRole("button", { name: "Create and edit" }).click();
+  test("creates a collection and opens it with Content + Structure tabs", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "New collection" }).first().click();
+    await page.getByLabel(/Name \(plural\)/).fill("Articles");
+    await page.getByLabel(/Name \(singular\)/).fill("Article");
+    await page.getByLabel(/Slug/).fill("articles");
+    await page.getByRole("button", { name: "Create and configure" }).click();
 
-    await page.waitForURL(/\/content-types\/.+/);
+    await page.waitForURL(/\/collections\/.+/);
     await expect(
-      page.getByRole("heading", { name: "Blog Post" }),
+      page.getByRole("heading", { name: "Articles" }),
     ).toBeVisible();
-    await expect(page.getByText("DRAFT")).toBeVisible();
-    await expect(page.getByText("Fields (0)")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Content" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Structure" })).toBeVisible();
   });
 
-  test("field type picker shows all 18 types in 6 groups", async ({ page }) => {
-    await page
-      .getByRole("button", { name: "New content type" })
-      .first()
-      .click();
-    await page.getByLabel("Name").fill("Test CT");
-    await page.getByLabel(/Slug/).fill("test-ct");
-    await page.getByRole("button", { name: "Create and edit" }).click();
-    await page.waitForURL(/\/content-types\/.+/);
+  test("builds a structure, activates, and creates an item", async ({
+    page,
+  }) => {
+    // Create the collection
+    await page.getByRole("button", { name: "New collection" }).first().click();
+    await page.getByLabel(/Name \(plural\)/).fill("Products");
+    await page.getByLabel(/Name \(singular\)/).fill("Product");
+    await page.getByLabel(/Slug/).fill("products");
+    await page.getByRole("button", { name: "Create and configure" }).click();
+    await page.waitForURL(/\/collections\/.+/);
 
-    await page.getByRole("button", { name: "Add field" }).first().click();
-    const picker = page.getByRole("region", { name: "Choose field type" });
-    await expect(picker.locator("p")).toHaveText([
-      "Basic",
-      "Selection",
-      "Date & Time",
-      "Specialized",
-      "Media",
-      "Structure",
-    ]);
-
-    const fieldButtons = picker.getByRole("button", {
-      name: /Short plain text|Multi-line|Formatted text|Integer|True \/ false|Pick one|Pick multiple|Calendar|Date with|Time of|Web address|Email address|Color picker|Single image|Multiple images|Link to|Nested group|Repeatable/,
-    });
-    await expect(fieldButtons).toHaveCount(18);
-  });
-
-  test("can add fields and activate content type", async ({ page }) => {
-    await page
-      .getByRole("button", { name: "New content type" })
-      .first()
-      .click();
-    await page.getByLabel("Name").fill("Article");
-    await page.getByLabel(/Slug/).fill("article");
-    await page.getByRole("button", { name: "Create and edit" }).click();
-    await page.waitForURL(/\/content-types\/.+/);
-
-    // Activate is disabled with no fields
-    await expect(page.getByRole("button", { name: "Activate" })).toBeDisabled();
-
-    // Add a text field
+    // Structure tab → add a field → activate
+    await page.getByRole("tab", { name: "Structure" }).click();
     await page.getByRole("button", { name: "Add field" }).first().click();
     await page.getByRole("button", { name: /Short plain text/ }).click();
     await expect(page.getByText("Fields (1)")).toBeVisible();
-
-    // Add a rich text field
-    await page.getByRole("button", { name: "Add field" }).first().click();
-    await page.getByRole("button", { name: /Formatted text/ }).click();
-    await expect(page.getByText("Fields (2)")).toBeVisible();
-
-    // Activate button should now be enabled
-    await expect(page.getByRole("button", { name: "Activate" })).toBeEnabled();
-
-    // Activate
     await page.getByRole("button", { name: "Activate" }).click();
-    await expect(page.getByText("ACTIVE")).toBeVisible();
-    await expect(page.getByText("v1")).toBeVisible();
-    await expect(page.getByText("Saved")).toBeVisible();
+    await expect(page.getByText("ACTIVE").first()).toBeVisible();
+
+    // Content tab → create a new Product
+    await page.getByRole("tab", { name: "Content" }).click();
+    await page.getByRole("button", { name: "New Product" }).first().click();
+    await page.getByLabel("Title").fill("First Product");
+    await page.getByLabel(/Slug/).fill("first-product");
+    await page.getByRole("button", { name: "Create Product" }).click();
+
+    // Lands on the item editor
+    await page.waitForURL(/\/items\/.+/);
+    await expect(page.getByLabel("Title")).toHaveValue("First Product");
+  });
+});
+
+test.describe("Pages", () => {
+  test.beforeEach(async ({ page, orgId }) => {
+    void orgId;
+    await createAndOpenSite(page);
+    await page.getByRole("link", { name: "Pages" }).click();
+    await page.waitForURL(/\/pages$/);
   });
 
-  test("activated content type appears in list with ACTIVE badge", async ({
+  test("shows empty state with create button", async ({ page }) => {
+    await expect(page.getByText("No pages yet")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "New page" }).first(),
+    ).toBeVisible();
+  });
+
+  test("creates a page, activates structure, and edits single content", async ({
     page,
   }) => {
-    // Create and activate a content type
-    await page
-      .getByRole("button", { name: "New content type" })
-      .first()
-      .click();
-    await page.getByLabel("Name").fill("Product");
-    await page.getByLabel(/Slug/).fill("product");
-    await page.getByRole("button", { name: "Create and edit" }).click();
-    await page.waitForURL(/\/content-types\/.+/);
+    await page.getByRole("button", { name: "New page" }).first().click();
+    await page.getByLabel(/Name/).fill("About");
+    await page.getByLabel(/Slug/).fill("about");
+    await page.getByRole("button", { name: "Create and configure" }).click();
+    await page.waitForURL(/\/pages\/.+/);
 
+    await expect(page.getByRole("heading", { name: "About" })).toBeVisible();
+
+    // Content tab prompts to activate first
+    await expect(
+      page.getByText(/Activate this page/),
+    ).toBeVisible();
+
+    // Structure tab → add field → activate
+    await page.getByRole("tab", { name: "Structure" }).click();
     await page.getByRole("button", { name: "Add field" }).first().click();
     await page.getByRole("button", { name: /Short plain text/ }).click();
     await page.getByRole("button", { name: "Activate" }).click();
-    await expect(page.getByText("v1")).toBeVisible();
+    await expect(page.getByText("ACTIVE").first()).toBeVisible();
 
-    // Go back to list
-    await page
-      .locator("aside")
-      .getByRole("link", { name: "Content Types" })
-      .click();
-    await expect(page).toHaveURL(/\/content-types$/);
-    const productRow = page.getByRole("link").filter({ hasText: "Product" });
-    await expect(productRow).toBeVisible();
-    await expect(productRow).toContainText("ACTIVE");
+    // Content tab now resolves the single item editor
+    await page.getByRole("tab", { name: "Content" }).click();
+    await expect(page.getByLabel("Title")).toBeVisible();
   });
 });

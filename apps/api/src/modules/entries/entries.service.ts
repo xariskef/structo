@@ -80,6 +80,19 @@ export class EntriesService {
       input.contentTypeId,
       siteId,
     );
+
+    // A single page holds exactly one item.
+    if (activeVersion.kind === "SINGLE") {
+      const existingCount = await this.db.client.contentEntry.count({
+        where: { contentTypeId: input.contentTypeId },
+      });
+      if (existingCount > 0) {
+        throw new ConflictException(
+          "This page already has content. A single page holds exactly one item.",
+        );
+      }
+    }
+
     const fields = this.toFields(activeVersion.fields);
     const data = this.validateData(fields, input.data, "draft");
 
@@ -134,6 +147,64 @@ export class EntriesService {
         throw new ConflictException(
           "An entry with this slug already exists for this content type.",
         );
+      }
+      throw error;
+    }
+  }
+
+  // Single pages have exactly one backing item. Returns it, creating an empty
+  // draft on first access.
+  async getOrCreateSingle(
+    userId: string,
+    siteId: string,
+    contentTypeId: string,
+  ): Promise<EntryDetail> {
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.view",
+    );
+
+    const existing = await this.db.client.contentEntry.findFirst({
+      where: { contentTypeId, siteId },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return this.get(userId, siteId, existing.id);
+    }
+
+    const activeVersion = await this.resolveActiveVersion(
+      contentTypeId,
+      siteId,
+    );
+
+    if (activeVersion.kind !== "SINGLE") {
+      throw new BadRequestException(
+        "Only single pages expose a single item.",
+      );
+    }
+
+    try {
+      return await this.create(userId, siteId, {
+        contentTypeId,
+        title: activeVersion.contentTypeName,
+        slug: activeVersion.contentTypeSlug,
+        data: {},
+      });
+    } catch (error: unknown) {
+      // Two concurrent first-opens can race to create the single item.
+      // If that happens, return whichever item won the race.
+      if (error instanceof ConflictException) {
+        const raced = await this.db.client.contentEntry.findFirst({
+          where: { contentTypeId, siteId },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        });
+        if (raced) {
+          return this.get(userId, siteId, raced.id);
+        }
       }
       throw error;
     }
@@ -459,7 +530,13 @@ export class EntriesService {
       );
     }
 
-    return { ...version, organizationId: contentType.site.organizationId };
+    return {
+      ...version,
+      organizationId: contentType.site.organizationId,
+      kind: contentType.kind,
+      contentTypeName: contentType.name,
+      contentTypeSlug: contentType.slug,
+    };
   }
 
   private validateData(
