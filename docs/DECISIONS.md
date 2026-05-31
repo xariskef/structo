@@ -1,0 +1,168 @@
+# Architecture Decisions
+
+This document records accepted decisions, proposed defaults and unresolved
+questions. Update it whenever an architectural choice changes.
+
+## Accepted Decisions
+
+### D-001: Build A New Project
+
+Status: accepted.
+
+Structo CMS is a clean implementation rather than an evolution of an earlier
+prototype.
+
+### D-002: Headless CMS
+
+Status: accepted.
+
+The CMS manages content and exposes it through an API. Public frontend projects
+are deployed separately.
+
+### D-003: Multi-Site Organizations
+
+Status: accepted.
+
+Users can manage multiple sites through an organization dashboard. External
+collaborators can receive direct site-only access.
+
+### D-004: Three Administration Levels
+
+Status: accepted.
+
+The system separates:
+
+```text
+Platform administration
+Organization dashboard
+Site dashboard
+```
+
+### D-005: Modular Monolith Backend
+
+Status: accepted.
+
+The backend starts as one deployable API application with clear internal
+modules. Microservices are not an initial goal.
+
+### D-006: Separate Frontend Delivery API
+
+Status: accepted.
+
+Management operations and frontend delivery operations use separate route
+groups and permissions.
+
+### D-007: Structured Content Before Presentation Tools
+
+Status: accepted.
+
+The first releases prioritize content types, dynamic fields, groups and
+repeaters. A page builder is outside the initial scope.
+
+### D-008: No Runtime Generated Code Execution
+
+Status: accepted.
+
+Do not execute database-stored JavaScript or AI-generated frontend code.
+
+### D-009: Remote Neon PostgreSQL
+
+Status: accepted.
+
+Use a remote Neon PostgreSQL database. Do not add a local PostgreSQL Docker
+service to the initial scaffold.
+
+Use separate connection strings:
+
+```text
+DATABASE_URL   Pooled runtime connection
+DIRECT_URL     Direct migration connection
+```
+
+## Proposed Defaults
+
+These choices are recommended but can change before implementation.
+
+### D-101: Repository Shape
+
+Status: accepted.
+
+Use a `pnpm` workspace with Turborepo.
+
+### D-102: API Framework
+
+Status: accepted.
+
+Use NestJS with its default Express adapter initially.
+
+### D-103: Administration Application
+
+Status: accepted.
+
+Use Next.js and React for the administration application.
+
+### D-104: Database
+
+Status: accepted.
+
+Use PostgreSQL with Prisma ORM and versioned migrations.
+
+### D-105: Validation
+
+Status: proposed.
+
+Use Zod for static DTO contracts and JSON Schema with Ajv for dynamic content.
+
+### D-106: Rich Text
+
+Status: proposed.
+
+Use TipTap JSON for rich text storage.
+
+### D-107: Media Storage
+
+Status: proposed.
+
+Use an S3-compatible storage abstraction with a Cloudflare R2 provider.
+
+### D-108: Stable Dependency Policy
+
+Status: accepted.
+
+Use the latest stable compatible dependency releases available at
+implementation time. Verify versions from live official sources instead of
+relying on remembered versions. Exclude prerelease channels unless a documented
+decision explicitly opts into one.
+
+For Node.js, prefer the latest supported active LTS release for production.
+
+## Open Decisions
+
+### Q-001: Authentication Library
+
+Choose the maintained authentication solution and session strategy for the
+NestJS API and Next.js administration application.
+
+### Q-002: Delivery Visibility
+
+Decide whether published content requires a read-only site token in all cases or
+whether sites can opt into public delivery.
+
+### Q-003: Taxonomies
+
+Decide whether categories and tags belong in the first content modeling release
+or a later milestone.
+
+### Q-004: Analytics
+
+Define the initial analytics scope:
+
+- Administrative activity only
+- CMS usage metrics
+- Visitor analytics ingestion
+- A staged combination of the above
+
+### Q-005: Product Naming
+
+Confirm the final product name, npm package scope and environment variable
+prefix. The internal workspace package scope is provisionally `@structo`.
