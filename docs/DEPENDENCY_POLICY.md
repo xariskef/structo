@@ -82,13 +82,15 @@ repository is initialized.
 
 Current official documentation checks:
 
-| Area              | Verified observation                                                                                                                                                         | Source                                                                                 |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| npm registry tags | Packages can publish separate tags such as `latest`, `beta`, `next` and `canary`. Installing an unqualified package resolves the `latest` tag by default.                    | [npm dist-tags documentation](https://docs.npmjs.com/cli/dist-tag/)                    |
-| npm prereleases   | Stable version ranges exclude prereleases by default unless prereleases are explicitly included.                                                                             | [npm install documentation](https://docs.npmjs.com/cli/v11/commands/npm-install/)      |
-| Next.js           | The official installation guide uses `create-next-app@latest` and documents a minimum Node.js version of `20.9`.                                                             | [Next.js installation guide](https://nextjs.org/docs/app/getting-started/installation) |
-| NestJS            | The official NestJS v11 migration guide documents Express v5 as the default integration, Fastify v5 support and a Node.js requirement of version `20` or higher.             | [NestJS migration guide](https://docs.nestjs.com/migration-guide)                      |
-| Prisma ORM 7      | Connection URLs belong in `prisma.config.ts`. For Neon, Prisma documents `DIRECT_URL` for CLI operations and a pooled `DATABASE_URL` with `@prisma/adapter-neon` at runtime. | [Prisma ORM with Neon](https://docs.prisma.io/docs/v6/orm/overview/databases/neon)     |
+| Area              | Verified observation                                                                                                                                                         | Source                                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| npm registry tags | Packages can publish separate tags such as `latest`, `beta`, `next` and `canary`. Installing an unqualified package resolves the `latest` tag by default.                    | [npm dist-tags documentation](https://docs.npmjs.com/cli/dist-tag/)                                        |
+| npm prereleases   | Stable version ranges exclude prereleases by default unless prereleases are explicitly included.                                                                             | [npm install documentation](https://docs.npmjs.com/cli/v11/commands/npm-install/)                          |
+| Next.js           | The official installation guide uses `create-next-app@latest` and documents a minimum Node.js version of `20.9`.                                                             | [Next.js installation guide](https://nextjs.org/docs/app/getting-started/installation)                     |
+| NestJS            | The official NestJS v11 migration guide documents Express v5 as the default integration, Fastify v5 support and a Node.js requirement of version `20` or higher.             | [NestJS migration guide](https://docs.nestjs.com/migration-guide)                                          |
+| Prisma ORM 7      | Connection URLs belong in `prisma.config.ts`. For Neon, Prisma documents `DIRECT_URL` for CLI operations and a pooled `DATABASE_URL` with `@prisma/adapter-neon` at runtime. | [Prisma ORM with Neon](https://docs.prisma.io/docs/v6/orm/overview/databases/neon)                         |
+| NestJS throttling | NestJS documents `@nestjs/throttler` as its rate-limiting package and supports global guard registration.                                                                    | [NestJS rate limiting](https://docs.nestjs.com/security/rate-limiting)                                     |
+| Password hashing  | OWASP recommends Argon2id and documents a minimum configuration of `19 MiB`, `2` iterations and parallelism `1`.                                                             | [OWASP password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) |
 
 ## Baseline Inventory
 
@@ -107,9 +109,12 @@ Verified Phase 1 baseline:
 | ESLint             | `9.39.4`                | `2026-05-30` | Latest compatible stable maintenance release; ESLint `10.4.1` is not yet supported by transitive plugins from `eslint-config-next@16.2.6` |
 | Prisma ORM         | `7.8.0`                 | `2026-05-30` | Stable registry `latest`; Neon adapter uses the same version                                                                              |
 | Neon PostgreSQL    | Remote managed database | `2026-05-30` | Pooled runtime URL and direct migration URL are configured separately                                                                     |
-| Zod                | `4.4.3`                 | `2026-05-30` | Stable registry `latest`; install when static validation implementation begins                                                            |
+| Zod                | `4.4.3`                 | `2026-05-31` | Stable registry `latest`; installed for shared static API input contracts                                                                 |
 | Ajv                | `8.20.0`                | `2026-05-30` | Stable registry `latest`; install when dynamic validation implementation begins                                                           |
 | TypeScript         | `6.0.3`                 | `2026-05-30` | Stable registry `latest`; supported by selected toolchain                                                                                 |
+| argon2             | `0.44.0`                | `2026-05-31` | Stable registry `latest`; Argon2id password hashing                                                                                       |
+| @nestjs/throttler  | `6.5.0`                 | `2026-05-31` | Stable registry `latest`; API and authentication endpoint rate limiting                                                                   |
+| @types/express     | `5.0.6`                 | `2026-05-31` | Stable registry `latest`; explicit request and response types for cookie transport                                                        |
 
 ## Continuous Integration
 

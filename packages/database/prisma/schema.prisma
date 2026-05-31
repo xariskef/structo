@@ -42,9 +42,34 @@ model User {
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
   platformOperatorAccess  PlatformOperatorAccess?
+  passwordCredential      PasswordCredential?
+  sessions                AuthSession[]
   createdOrganizations    Organization[]           @relation("OrganizationCreator")
   organizationMemberships OrganizationMembership[]
   siteMemberships         SiteMembership[]
+  createdInvitations      Invitation[]             @relation("InvitationCreator")
+}
+
+model PasswordCredential {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuthSession {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model PlatformOperatorAccess {
@@ -66,6 +91,7 @@ model Organization {
   createdBy   User                     @relation("OrganizationCreator", fields: [createdById], references: [id])
   memberships OrganizationMembership[]
   sites       Site[]
+  invitations Invitation[]
 
   @@index([createdById])
 }
@@ -95,6 +121,7 @@ model Site {
   updatedAt      DateTime         @updatedAt
   organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   memberships    SiteMembership[]
+  invitations    Invitation[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -112,4 +139,26 @@ model SiteMembership {
 
   @@unique([siteId, userId])
   @@index([userId])
+}
+
+model Invitation {
+  id               String                      @id @default(cuid())
+  email            String
+  organizationId   String
+  siteId           String?
+  organizationRole OrganizationMembershipRole?
+  siteRole         SiteMembershipRole?
+  tokenHash        String                      @unique
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  createdById      String
+  createdAt        DateTime                    @default(now())
+  organization     Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site             Site?                       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  createdBy        User                        @relation("InvitationCreator", fields: [createdById], references: [id])
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([email])
+  @@index([expiresAt])
 }

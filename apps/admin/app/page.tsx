@@ -1,16 +1,19 @@
 const areas = [
   {
-    title: "Organization dashboard",
+    title: "Create workspace",
     description:
-      "Manage sites, members, activity logs and aggregated insights.",
+      "Register as an owner and create your first organization automatically.",
+    href: "/register",
   },
   {
-    title: "Site dashboard",
-    description: "Manage settings, content types, entries and delivery access.",
+    title: "Administration dashboard",
+    description: "Log in to switch between your organizations and sites.",
+    href: "/login",
   },
   {
     title: "Platform administration",
     description: "Monitor organizations, users, health and support operations.",
+    href: "#",
   },
 ];
 
@@ -29,9 +32,15 @@ export default function HomePage() {
           <article key={area.title}>
             <h2>{area.title}</h2>
             <p>{area.description}</p>
+            {area.href === "#" ? (
+              <span>Added in a later milestone</span>
+            ) : (
+              <Link href={area.href}>Open area</Link>
+            )}
           </article>
         ))}
       </section>
     </main>
   );
 }
+import Link from "next/link";

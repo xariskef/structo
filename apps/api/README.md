@@ -7,18 +7,31 @@ Current bootstrap:
 - Global API prefix: `/api/v1`
 - Health endpoint: `/api/v1/health`
 - OpenAPI UI: `/api/docs`
+- Owner registration and session endpoints: `/api/v1/manage/auth/*`
+- Tenant endpoints: `/api/v1/manage/organizations/*` and
+  `/api/v1/manage/sites/*`
+- Invitation endpoints: `/api/v1/manage/*/invitations`
 
-This directory will contain:
+Implemented modules:
 
 ```text
 src/modules/
   auth/
-  users/
+  authorization/
+  database/
   organizations/
-  organization-memberships/
   sites/
-  site-memberships/
   invitations/
+  health/
+```
+
+Later modules:
+
+```text
+src/modules/
+  users/
+  organization-memberships/
+  site-memberships/
   settings/
   content-types/
   entries/

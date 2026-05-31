@@ -28,6 +28,9 @@ const DEFAULT_PACKAGES = [
   "dotenv",
   "zod",
   "ajv",
+  "argon2",
+  "@nestjs/throttler",
+  "@types/express",
 ];
 
 const packages = process.argv.slice(2);

@@ -136,12 +136,19 @@ decision explicitly opts into one.
 
 For Node.js, prefer the latest supported active LTS release for production.
 
+### D-109: Administration Authentication
+
+Status: accepted.
+
+Use Argon2id password hashes and opaque random server-side sessions for the
+administration application. Store only session token hashes in PostgreSQL and
+send the raw token through an `HttpOnly`, `SameSite=Strict` cookie with the
+`Secure` flag enabled in production.
+
+Store invitation token hashes rather than raw tokens. Invitation tokens are
+one-time credentials with explicit expiry.
+
 ## Open Decisions
-
-### Q-001: Authentication Library
-
-Choose the maintained authentication solution and session strategy for the
-NestJS API and Next.js administration application.
 
 ### Q-002: Delivery Visibility
 

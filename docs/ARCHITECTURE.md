@@ -2,7 +2,8 @@
 
 ## Status
 
-This document describes the planned architecture before implementation starts.
+The modular monolith scaffold and Phase 2 identity and tenancy modules are
+implemented. Later milestone modules remain planned.
 
 ## System Shape
 
@@ -89,18 +90,26 @@ organization dashboard.
 
 ## Backend Modules
 
-Planned modules:
+Implemented Phase 2 modules:
 
 ```text
 apps/api/src/modules/
   health/
   auth/
-  users/
+  authorization/
+  database/
   organizations/
-  organization-memberships/
   sites/
-  site-memberships/
   invitations/
+```
+
+Planned later modules:
+
+```text
+apps/api/src/modules/
+  users/
+  organization-memberships/
+  site-memberships/
   settings/
   content-types/
   entries/

@@ -62,12 +62,14 @@ the normal workflow.
 
 ```text
 20260530221500_init_identity_tenancy
+20260531113000_add_auth_sessions_invitations
 ```
 
-The initial migration creates the identity and tenancy foundation. It was
-generated offline from the validated Prisma schema and has not been applied to
-Neon yet. Apply it only after adding rotated local credentials to the ignored
-root `.env`.
+The first migration creates the identity and tenancy foundation. The second
+adds password credentials, opaque server-side sessions and invitations. They
+were generated offline from the validated Prisma schema and have not been
+applied to Neon yet. Apply them only after adding rotated local credentials to
+the ignored root `.env`.
 
 ## Neon Setup Checklist
 

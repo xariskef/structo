@@ -10,8 +10,13 @@ Organization dashboard
 Site dashboard
 ```
 
-The landing page introduces the three administration areas. Identity, tenant
-resolution and protected dashboard layouts are added in Phase 2.
+The landing page introduces the administration areas. Phase 2 adds:
 
-External Next.js and React dependencies are pinned after live registry
-verification.
+- Owner registration and login pages
+- Session logout
+- API-backed organization and site switchers
+- Organization site listing and creation
+- Organization and site dashboard shells
+
+Set `NEXT_PUBLIC_API_BASE_URL` when the API is not served from the local
+`http://localhost:3001/api/v1` default.

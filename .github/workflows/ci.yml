@@ -31,6 +31,11 @@ jobs:
         env:
           DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/structo
 
+      - name: Validate Prisma schema
+        run: corepack pnpm db:validate
+        env:
+          DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/structo
+
       - name: Check formatting
         run: corepack pnpm format:check
 

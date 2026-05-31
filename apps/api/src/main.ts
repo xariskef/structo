@@ -31,6 +31,10 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix("api/v1");
+  app.enableCors({
+    origin: process.env.ADMIN_APP_URL ?? "http://localhost:3000",
+    credentials: true,
+  });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle("Structo CMS API")

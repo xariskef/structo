@@ -44,12 +44,20 @@ Base path:
 Initial route groups:
 
 ```text
-/auth
+/auth/register
+/auth/register-invited
+/auth/login
+/auth/logout
+/auth/me
 /organizations
+/organizations/:organizationId
 /organizations/:organizationId/members
 /organizations/:organizationId/sites
+/organizations/:organizationId/invitations
+/sites
 /sites/:siteId
 /sites/:siteId/members
+/sites/:siteId/invitations
 /sites/:siteId/settings
 /sites/:siteId/content-types
 /sites/:siteId/content-types/:contentTypeId
@@ -58,10 +66,22 @@ Initial route groups:
 /sites/:siteId/api-tokens
 /sites/:siteId/media
 /sites/:siteId/audit-logs
+/invitations/accept
 ```
 
 Management routes require an authenticated user session and authorization for
 the requested organization or site.
+
+Implemented in Phase 2:
+
+- Owner registration creates the first organization and an `OWNER` membership.
+- Login and registration set an opaque server-side session cookie.
+- `GET /manage/organizations` lists organization memberships for the current
+  user.
+- `GET /manage/sites` lists both inherited and direct site access.
+- Site creation requires `organization.manage_sites`.
+- Invitation creation and acceptance use one-time raw tokens whose hashes are
+  persisted.
 
 ## Delivery API
 

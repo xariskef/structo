@@ -21,7 +21,24 @@ implementation milestone.
 - Rate limit authentication endpoints.
 - Do not expose whether an email exists unless required by the flow.
 
-The authentication library is an open implementation decision.
+Implemented authentication baseline:
+
+- Hash passwords with `argon2` using Argon2id, `19 MiB` memory, `2` iterations
+  and parallelism `1`.
+- Generate opaque session tokens with Node.js `crypto.randomBytes`.
+- Persist only SHA-256 session token hashes.
+- Set administration sessions in `HttpOnly`, `SameSite=Strict` cookies.
+- Enable the cookie `Secure` flag in production.
+- Expire administration sessions after eight hours.
+- Persist only SHA-256 invitation token hashes.
+- Expire invitations after seven days and accept each invitation once.
+- Apply a global management rate limit and a stricter five-request-per-minute
+  limit to registration and login endpoints.
+
+References:
+
+- [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
 
 ## Authorization
 

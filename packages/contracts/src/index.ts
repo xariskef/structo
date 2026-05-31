@@ -15,3 +15,6 @@ export interface HealthResponse {
   service: "structo-api";
   status: "ok";
 }
+
+export * from "./auth.js";
+export * from "./tenancy.js";

@@ -16,11 +16,12 @@ theme and SDK can be added later as separate packages.
 
 ## Project Status
 
-Status: Phase 1 repository scaffold complete.
+Status: Phase 2 identity and tenancy complete.
 
-The workspace, initial application source trees and shared package boundaries
-exist. Stable dependencies were verified from live official sources and the
-pnpm lockfile is present.
+The repository now includes owner registration, login, server-side sessions,
+organizations, sites, invitations, tenant authorization checks and functional
+organization and site dashboard shells. Stable dependencies were verified from
+live official sources and the pnpm lockfile is present.
 
 ## Core Product Areas
 
@@ -69,6 +70,7 @@ Before the first database migration:
 3. Add the pooled Neon connection as `DATABASE_URL`.
 4. Add the direct Neon connection as `DIRECT_URL`.
 5. Generate the Prisma client with `corepack pnpm db:generate`.
+6. Apply versioned migrations with `corepack pnpm db:deploy`.
 
 Do not commit the root `.env`.
 

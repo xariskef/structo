@@ -70,3 +70,138 @@ article {
   border-radius: 1rem;
   background: #fffefb;
 }
+
+a {
+  color: #315b50;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-radius: 0.6rem;
+  color: #fffefb;
+  background: #315b50;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+input {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #c5d0ca;
+  border-radius: 0.55rem;
+  background: #fffefb;
+}
+
+.dashboard-layout {
+  display: grid;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  grid-template-columns: 16rem 1fr;
+}
+
+aside {
+  padding: 2rem 1.25rem;
+  background: #1f302c;
+}
+
+.brand {
+  color: #f4f2ec;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.context-switcher {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 2.5rem;
+}
+
+.context-switcher p {
+  margin: 0;
+  color: #9db6ae;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.context-switcher a {
+  color: #f4f2ec;
+}
+
+.sidebar-link,
+.sidebar-button {
+  display: block;
+  margin-top: 2rem;
+}
+
+.sidebar-link {
+  color: #f4f2ec;
+}
+
+.sidebar-button {
+  background: #527267;
+}
+
+.empty-switcher,
+.sidebar-message {
+  color: #9db6ae;
+  font-size: 0.85rem;
+}
+
+.dashboard-content {
+  padding: 4rem;
+}
+
+.auth-page {
+  max-width: 42rem;
+}
+
+.auth-form,
+.inline-form {
+  display: grid;
+  max-width: 34rem;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #d7ded7;
+  border-radius: 1rem;
+  background: #fffefb;
+}
+
+.inline-form {
+  margin-top: 2rem;
+}
+
+label {
+  display: grid;
+  gap: 0.4rem;
+  color: #315b50;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.form-error {
+  color: #a33030;
+}
+
+@media (max-width: 48rem) {
+  .dashboard-layout {
+    display: block;
+  }
+
+  .dashboard-content {
+    padding: 3rem 1.5rem;
+  }
+}

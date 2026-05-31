@@ -2,8 +2,8 @@
 
 ## Status
 
-The identity and tenancy foundation is implemented in the initial Prisma
-migration. Later milestone entities remain conceptual until their feature work
+The identity and tenancy foundation is implemented in the first two Prisma
+migrations. Later milestone entities remain conceptual until their feature work
 begins.
 
 ## Identity And Access
@@ -42,6 +42,36 @@ Initial role:
 
 ```text
 PLATFORM_ADMIN
+```
+
+### PasswordCredential
+
+Stores one Argon2id password hash for a user.
+
+Core fields:
+
+```text
+id
+userId
+passwordHash
+createdAt
+updatedAt
+```
+
+### AuthSession
+
+Stores an administration session. The database stores a token hash, never the
+raw token value sent in the session cookie.
+
+Core fields:
+
+```text
+id
+userId
+tokenHash
+expiresAt
+createdAt
+lastUsedAt
 ```
 
 ### Organization
@@ -113,6 +143,9 @@ organization dashboard.
 - Site public key is globally unique.
 - Site slug is unique within its organization.
 - Direct site membership is unique per site and user.
+- Password credential ownership is unique per user.
+- Session token hashes are globally unique.
+- Invitation token hashes are globally unique.
 - Deleting an organization cascades to its sites and memberships.
 - Deleting a site cascades to its direct memberships.
 - Organization creator deletion is restricted while owned organizations exist.
@@ -133,7 +166,12 @@ tokenHash
 expiresAt
 acceptedAt?
 createdById
+createdAt
 ```
+
+An invitation grants either an organization role or a direct site role.
+Invitation tokens are persisted as hashes, expire after seven days and can be
+accepted once.
 
 ## Settings
 
