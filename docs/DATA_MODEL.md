@@ -405,6 +405,47 @@ createdAt
 unique(entryId, revision)
 ```
 
+## Navigation
+
+### NavigationMenu
+
+A named, site-scoped menu whose `items` is a nested JSON tree, edited and saved
+whole (mirroring versioned content-type `fields`). A site may hold several named
+menus (for example `main` and `footer`); the first time the area is opened a
+default `main` menu is seeded.
+
+Core fields:
+
+```text
+id
+siteId
+name
+key            // stable per-site identifier (e.g. "main", "footer")
+items          // JSON tree of menu items
+createdAt
+updatedAt
+
+unique(siteId, key)
+index(siteId)
+```
+
+Each item in the `items` tree has the shape:
+
+```text
+id
+label          // 1..100 chars
+type           // page | collectionArchive | collectionItem | custom
+url            // resolved href, 1..2000 chars
+target         // _self | _blank
+reference?     // { kind, id } recorded for non-custom links so delivery
+               // can re-resolve the URL later
+children[]     // same item shape; max depth 5, max 200 items per menu
+```
+
+`page`, `collectionArchive` and `collectionItem` items carry a `reference` to
+the linked content (active SINGLE type, active COLLECTION type, or published
+entry); `custom` items store only a literal `url`.
+
 ## Delivery
 
 ### SiteApiToken

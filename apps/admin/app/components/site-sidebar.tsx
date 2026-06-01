@@ -6,6 +6,7 @@ import {
   ImageIcon,
   Layers,
   LayoutDashboard,
+  ListTree,
   LogOut,
   FolderTree,
   Settings,
@@ -144,6 +145,10 @@ export function SiteSidebarNav({ siteId }: SiteSidebarNavProps) {
             <NavLink href={`${base}/tags`}>
               <Tag className="h-4 w-4 shrink-0" />
               Page tags
+            </NavLink>
+            <NavLink href={`${base}/navigation`}>
+              <ListTree className="h-4 w-4 shrink-0" />
+              Menus
             </NavLink>
             <NavLink href={`${base}/media`}>
               <ImageIcon className="h-4 w-4 shrink-0" />

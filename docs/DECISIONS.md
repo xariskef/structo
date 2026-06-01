@@ -287,6 +287,24 @@ entries. Each content type explicitly enables the taxonomy kinds its entries
 may use. Assignments reject cross-site terms, cross-collection terms and
 disabled taxonomy kinds.
 
+### D-120: Navigation Menus As One Model With A JSON Item Tree
+
+Status: accepted.
+
+Store each navigation menu as a single site-scoped `NavigationMenu` row whose
+`items` is a nested JSON tree, read and written whole — the same wholesale
+pattern as content-type `fields`, rather than a row-per-item table. A site may
+own several named menus keyed by a stable per-site `key` (for example `main`,
+`footer`), and the first time the menus area is opened a default `main` menu is
+seeded. Items link to active SINGLE pages, active COLLECTION archives, published
+collection items or custom URLs; non-custom items keep a `reference` so the
+delivery API can re-resolve the URL when content moves. Nesting is bounded to 5
+levels and 200 items per menu, validated in the contract. The editor reorders
+and nests with up/down and indent/outdent buttons (no drag-and-drop dependency).
+All mutations require the new `site.manage_navigation` permission, granted to the
+same roles that hold `site.manage_taxonomies`. Taxonomy-term links are deferred;
+custom URLs cover them for now.
+
 ## Open Decisions
 
 ### Q-002: Delivery Visibility

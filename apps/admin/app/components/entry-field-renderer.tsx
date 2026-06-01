@@ -5,7 +5,6 @@ import { Label } from "@structo/ui/components/label";
 import { Textarea } from "@structo/ui/components/textarea";
 import { Button } from "@structo/ui/components/button";
 import type { FieldDefinition } from "@structo/field-kit";
-import { isNestedField } from "@structo/field-kit";
 import { Plus, Trash2 } from "lucide-react";
 import {
   cloneElement,

@@ -80,6 +80,9 @@ Initial route groups:
 /sites/:siteId/taxonomy-definitions/:definitionId
 /sites/:siteId/taxonomy-definitions/:definitionId/terms
 /sites/:siteId/taxonomy-terms/:termId
+/sites/:siteId/navigation-menus
+/sites/:siteId/navigation-menus/:menuId
+/sites/:siteId/navigation-link-targets
 /sites/:siteId/api-tokens
 /sites/:siteId/media
 /sites/:siteId/audit-logs
@@ -118,6 +121,11 @@ Implemented management foundation:
 - Content types opt into supported taxonomies, and entry assignments reject
   terms from another site, another collection scope or a taxonomy not enabled
   for that content type.
+- Navigation menus are named, site-scoped lists whose nested `items` tree is
+  read and saved whole. `navigation-link-targets` aggregates pickable pages,
+  collection archives and published collection items so the editor builds links
+  in one round-trip. Mutations require `site.manage_navigation`; the first list
+  of a site seeds a default `main` menu.
 
 ## Delivery API
 

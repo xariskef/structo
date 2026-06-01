@@ -22,3 +22,4 @@ export * from "./settings.js";
 export * from "./content-types.js";
 export * from "./entries.js";
 export * from "./taxonomies.js";
+export * from "./navigation.js";

@@ -12,6 +12,7 @@ import { EntriesModule } from "./modules/entries/entries.module.js";
 import { InvitationsModule } from "./modules/invitations/invitations.module.js";
 import { OrganizationsModule } from "./modules/organizations/organizations.module.js";
 import { SettingsModule } from "./modules/settings/settings.module.js";
+import { NavigationModule } from "./modules/navigation/navigation.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
 import { TaxonomiesModule } from "./modules/taxonomies/taxonomies.module.js";
 
@@ -32,6 +33,7 @@ import { TaxonomiesModule } from "./modules/taxonomies/taxonomies.module.js";
     InvitationsModule,
     OrganizationsModule,
     SettingsModule,
+    NavigationModule,
     SitesModule,
     TaxonomiesModule,
   ],
