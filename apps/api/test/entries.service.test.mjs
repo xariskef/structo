@@ -121,6 +121,7 @@ test("publishing rejects an incomplete draft against its referenced schema versi
               siteId: "site-a",
               status: "DRAFT",
               data: {},
+              contentTypeId: "content-type-a",
               contentTypeVersion: { fields: [requiredTitleField] },
               site: { organizationId: "organization-a" },
               revisions: [],
@@ -128,6 +129,13 @@ test("publishing rejects an incomplete draft against its referenced schema versi
           },
           update() {
             updated = true;
+          },
+        },
+        // No newer active version: publish falls back to the entry's bound
+        // schema version.
+        contentType: {
+          findFirst() {
+            return null;
           },
         },
       },

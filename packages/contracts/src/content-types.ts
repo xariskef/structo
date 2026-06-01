@@ -278,8 +278,14 @@ export const updateContentTypeSchema = z.object({
   fields: contentTypeFieldsSchema.optional(),
 });
 
+export const bulkContentTypesSchema = z.object({
+  action: z.enum(["publish", "unpublish", "archive"]),
+  ids: z.array(z.string().min(1)).min(1).max(200),
+});
+
 export type CreateContentTypeInput = z.infer<typeof createContentTypeSchema>;
 export type UpdateContentTypeInput = z.infer<typeof updateContentTypeSchema>;
+export type BulkContentTypesInput = z.infer<typeof bulkContentTypesSchema>;
 
 // Response types
 

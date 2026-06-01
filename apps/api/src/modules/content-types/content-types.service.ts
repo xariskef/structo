@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import {
   activatableContentTypeFieldsSchema,
+  type BulkContentTypesInput,
   type ContentTypeDetail,
   type ContentTypeKind,
   type ContentTypeSummary,
@@ -18,6 +19,7 @@ import type { FieldDefinition } from "@structo/field-kit";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { DatabaseService } from "../database/database.service.js";
+import { EntriesService } from "../entries/entries.service.js";
 
 // Every new content type starts with a built-in rich-text body, like the
 // default WordPress editor. It can be removed from the Structure tab.
@@ -51,7 +53,61 @@ export class ContentTypesService {
     private readonly db: DatabaseService,
     @Inject(AuthorizationService)
     private readonly authorizationService: AuthorizationService,
+    @Inject(EntriesService)
+    private readonly entriesService: EntriesService,
   ) {}
+
+  // Bulk actions for the Pages list. Publish/unpublish act on each single
+  // page's backing item; archive archives the content type itself.
+  async bulk(
+    userId: string,
+    siteId: string,
+    input: BulkContentTypesInput,
+  ): Promise<{ affected: number; failed: number }> {
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      input.action === "archive"
+        ? "site.manage_content_types"
+        : "site.publish_content",
+    );
+
+    const owned = await this.db.client.contentType.findMany({
+      where: { id: { in: input.ids }, siteId },
+      select: { id: true },
+    });
+    if (owned.length !== input.ids.length) {
+      throw new BadRequestException(
+        "Some content types do not belong to this site.",
+      );
+    }
+
+    let affected = 0;
+    let failed = 0;
+    for (const id of input.ids) {
+      try {
+        if (input.action === "archive") {
+          await this.archive(userId, siteId, id);
+        } else {
+          const single = await this.entriesService.getOrCreateSingle(
+            userId,
+            siteId,
+            id,
+          );
+          if (input.action === "publish") {
+            await this.entriesService.publish(userId, siteId, single.id);
+          } else {
+            await this.entriesService.unpublish(userId, siteId, single.id);
+          }
+        }
+        affected += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    return { affected, failed };
+  }
 
   async list(
     userId: string,

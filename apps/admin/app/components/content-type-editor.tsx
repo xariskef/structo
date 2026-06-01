@@ -559,7 +559,7 @@ export function ContentTypeEditor({
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-12xl">
       {/* Action bar */}
       <div className="mb-5 flex items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">

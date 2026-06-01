@@ -141,7 +141,7 @@ export function PageView({ siteId, contentTypeId }: PageViewProps) {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-12xl">
       {/* Header */}
       <div className="mb-6">
         <div className="mb-1 flex items-center gap-1.5">

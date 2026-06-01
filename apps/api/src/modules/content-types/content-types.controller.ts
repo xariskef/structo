@@ -10,6 +10,7 @@ import {
   Query,
 } from "@nestjs/common";
 import {
+  bulkContentTypesSchema,
   contentTypeKindSchema,
   createContentTypeSchema,
   updateContentTypeSchema,
@@ -37,6 +38,20 @@ export class ContentTypesController {
     const parsedKind: ContentTypeKind | undefined =
       kind === undefined ? undefined : parseInput(contentTypeKindSchema, kind);
     return this.contentTypesService.list(user.id, siteId, parsedKind);
+  }
+
+  @Post("sites/:siteId/content-types/bulk")
+  @HttpCode(200)
+  bulk(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("siteId") siteId: string,
+    @Body() body: unknown,
+  ) {
+    return this.contentTypesService.bulk(
+      user.id,
+      siteId,
+      parseInput(bulkContentTypesSchema, body),
+    );
   }
 
   @Post("sites/:siteId/content-types")

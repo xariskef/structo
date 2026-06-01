@@ -132,6 +132,14 @@ test("getOrCreateSingle returns the existing item without creating another", asy
         return { id: "entry-2" };
       },
     },
+    contentType: {
+      findFirst({ where }) {
+        // latestActiveVersion (status ACTIVE) → no newer version.
+        if (where.status === "ACTIVE") return null;
+        // getOrCreateSingle kind check.
+        return { kind: "SINGLE" };
+      },
+    },
   };
 
   const service = new EntriesService({ client }, authorization());

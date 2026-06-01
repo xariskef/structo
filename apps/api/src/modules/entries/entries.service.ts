@@ -6,10 +6,13 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import type {
+  BulkEntriesInput,
   CreateEntryInput,
   EntryDetail,
+  EntryStatus,
   EntrySummary,
   RevisionSummary,
+  ScheduleEntryInput,
   UpdateEntryInput,
 } from "@structo/contracts";
 import {
@@ -34,6 +37,7 @@ export class EntriesService {
     userId: string,
     siteId: string,
     contentTypeId?: string,
+    status?: EntryStatus,
   ): Promise<EntrySummary[]> {
     await this.authorizationService.assertSitePermission(
       userId,
@@ -45,10 +49,13 @@ export class EntriesService {
       where: {
         siteId,
         ...(contentTypeId ? { contentTypeId } : {}),
-        status: { not: "ARCHIVED" },
+        // A specific status filter overrides the default of hiding archived.
+        ...(status ? { status } : { status: { not: "ARCHIVED" } }),
       },
       orderBy: { updatedAt: "desc" },
-      include: { contentType: { select: { name: true, kind: true } } },
+      include: {
+        contentType: { select: { name: true, kind: true, slug: true } },
+      },
     });
 
     return rows.map((entry) => ({
@@ -57,9 +64,11 @@ export class EntriesService {
       contentTypeId: entry.contentTypeId,
       contentTypeName: entry.contentType.name,
       contentTypeKind: entry.contentType.kind,
+      contentTypeSlug: entry.contentType.slug,
       title: entry.title,
       slug: entry.slug,
       status: entry.status,
+      excerpt: entry.excerpt,
       publishedAt: entry.publishedAt,
       createdAt: entry.createdAt,
       updatedAt: entry.updatedAt,
@@ -113,7 +122,7 @@ export class EntriesService {
               updatedById: userId,
             },
             include: {
-              contentType: { select: { name: true, kind: true } },
+              contentType: { select: { name: true, kind: true, slug: true } },
               contentTypeVersion: { select: { fields: true } },
               revisions: {
                 orderBy: { revision: "desc" },
@@ -252,7 +261,7 @@ export class EntriesService {
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
       include: {
-        contentType: { select: { name: true, kind: true } },
+        contentType: { select: { name: true, kind: true, slug: true } },
         contentTypeVersion: { select: { fields: true } },
         revisions: {
           orderBy: { revision: "desc" },
@@ -266,7 +275,12 @@ export class EntriesService {
       throw new NotFoundException("Entry not found.");
     }
 
-    return this.toDetail(entry, entry.revisions[0]?.revision ?? null);
+    const latest = await this.latestActiveVersion(entry.contentTypeId);
+    return this.toDetail(
+      entry,
+      entry.revisions[0]?.revision ?? null,
+      latest?.fields,
+    );
   }
 
   async update(
@@ -297,14 +311,17 @@ export class EntriesService {
       throw new BadRequestException("Archived entries cannot be edited.");
     }
 
+    // Validate (and re-bind) against the current active schema so fields added
+    // after this entry was created are accepted and persisted.
+    const latest = await this.latestActiveVersion(existing.contentTypeId);
+    const versionFields = latest
+      ? latest.fields
+      : existing.contentTypeVersion.fields;
+
     const data =
       input.data === undefined
         ? undefined
-        : this.validateData(
-            this.toFields(existing.contentTypeVersion.fields),
-            input.data,
-            "draft",
-          );
+        : this.validateData(this.toFields(versionFields), input.data, "draft");
 
     try {
       await this.db.client.$transaction([
@@ -314,6 +331,14 @@ export class EntriesService {
             ...(input.title !== undefined ? { title: input.title } : {}),
             ...(input.slug !== undefined ? { slug: input.slug } : {}),
             ...(data !== undefined ? { data: this.toJson(data) } : {}),
+            ...(latest ? { contentTypeVersionId: latest.id } : {}),
+            ...(input.excerpt !== undefined ? { excerpt: input.excerpt } : {}),
+            ...(input.seoTitle !== undefined
+              ? { seoTitle: input.seoTitle }
+              : {}),
+            ...(input.seoDescription !== undefined
+              ? { seoDescription: input.seoDescription }
+              : {}),
             updatedById: userId,
           },
         }),
@@ -374,8 +399,14 @@ export class EntriesService {
       throw new BadRequestException("Archived entries cannot be published.");
     }
 
+    // Publish against the current active schema and migrate the entry onto it.
+    const latest = await this.latestActiveVersion(entry.contentTypeId);
+    const versionFields = latest
+      ? latest.fields
+      : entry.contentTypeVersion.fields;
+
     const data = this.validateData(
-      this.toFields(entry.contentTypeVersion.fields),
+      this.toFields(versionFields),
       this.toData(entry.data),
       "publish",
     );
@@ -388,6 +419,7 @@ export class EntriesService {
           data: this.toJson(data),
           status: "PUBLISHED",
           publishedAt: new Date(),
+          ...(latest ? { contentTypeVersionId: latest.id } : {}),
           updatedById: userId,
         },
       }),
@@ -518,6 +550,257 @@ export class EntriesService {
     return this.get(userId, siteId, entryId);
   }
 
+  async duplicate(
+    userId: string,
+    siteId: string,
+    entryId: string,
+  ): Promise<EntryDetail> {
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.create_content",
+    );
+
+    const source = await this.db.client.contentEntry.findUnique({
+      where: { id: entryId },
+      include: {
+        site: { select: { organizationId: true } },
+        contentType: { select: { kind: true } },
+      },
+    });
+
+    if (!source || source.siteId !== siteId) {
+      throw new NotFoundException("Entry not found.");
+    }
+
+    if (source.contentType.kind === "SINGLE") {
+      throw new BadRequestException("Single pages cannot be duplicated.");
+    }
+
+    const slug = await this.uniqueSlug(
+      source.contentTypeId,
+      `${source.slug}-copy`,
+    );
+
+    const created = await this.db.client.$transaction(async (transaction) => {
+      const copy = await transaction.contentEntry.create({
+        data: {
+          siteId,
+          contentTypeId: source.contentTypeId,
+          contentTypeVersionId: source.contentTypeVersionId,
+          title: `${source.title} (copy)`,
+          slug,
+          data: source.data as object,
+          excerpt: source.excerpt,
+          seoTitle: source.seoTitle,
+          seoDescription: source.seoDescription,
+          status: "DRAFT",
+          createdById: userId,
+          updatedById: userId,
+        },
+        include: {
+          contentType: { select: { name: true, kind: true, slug: true } },
+          contentTypeVersion: { select: { fields: true } },
+        },
+      });
+
+      await transaction.auditLog.create({
+        data: {
+          organizationId: source.site.organizationId,
+          siteId,
+          actorId: userId,
+          action: "entry.duplicate",
+          entityType: "ContentEntry",
+          entityId: copy.id,
+          metadata: { sourceId: source.id },
+        },
+      });
+
+      return copy;
+    });
+
+    return this.toDetail(created, null);
+  }
+
+  async remove(userId: string, siteId: string, entryId: string): Promise<void> {
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.publish_content",
+    );
+
+    const entry = await this.db.client.contentEntry.findUnique({
+      where: { id: entryId },
+      include: { site: { select: { organizationId: true } } },
+    });
+
+    if (!entry || entry.siteId !== siteId) {
+      throw new NotFoundException("Entry not found.");
+    }
+
+    await this.db.client.$transaction([
+      this.db.client.contentEntry.delete({ where: { id: entryId } }),
+      this.db.client.auditLog.create({
+        data: {
+          organizationId: entry.site.organizationId,
+          siteId,
+          actorId: userId,
+          action: "entry.delete",
+          entityType: "ContentEntry",
+          entityId: entryId,
+          metadata: { title: entry.title },
+        },
+      }),
+    ]);
+  }
+
+  // Applies one action across many entries, reusing the single-entry logic so
+  // validation, revisions and audit events stay consistent. Per-item failures
+  // are tolerated and counted.
+  async bulk(
+    userId: string,
+    siteId: string,
+    input: BulkEntriesInput,
+  ): Promise<{ affected: number; failed: number }> {
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.publish_content",
+    );
+
+    const owned = await this.db.client.contentEntry.findMany({
+      where: { id: { in: input.entryIds }, siteId },
+      select: { id: true },
+    });
+    if (owned.length !== input.entryIds.length) {
+      throw new BadRequestException(
+        "Some entries do not belong to this site.",
+      );
+    }
+
+    let affected = 0;
+    let failed = 0;
+    for (const id of input.entryIds) {
+      try {
+        if (input.action === "publish") {
+          await this.publish(userId, siteId, id);
+        } else if (input.action === "unpublish") {
+          await this.unpublish(userId, siteId, id);
+        } else if (input.action === "archive") {
+          await this.archive(userId, siteId, id);
+        } else {
+          await this.remove(userId, siteId, id);
+        }
+        affected += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    return { affected, failed };
+  }
+
+  async schedule(
+    userId: string,
+    siteId: string,
+    entryId: string,
+    input: ScheduleEntryInput,
+  ): Promise<EntryDetail> {
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.publish_content",
+    );
+
+    const when = new Date(input.publishAt);
+    if (Number.isNaN(when.getTime())) {
+      throw new BadRequestException("Invalid schedule date.");
+    }
+    if (when.getTime() <= Date.now()) {
+      throw new BadRequestException("Schedule time must be in the future.");
+    }
+
+    const entry = await this.db.client.contentEntry.findUnique({
+      where: { id: entryId },
+      include: {
+        site: { select: { organizationId: true } },
+        contentTypeVersion: { select: { fields: true } },
+      },
+    });
+
+    if (!entry || entry.siteId !== siteId) {
+      throw new NotFoundException("Entry not found.");
+    }
+    if (entry.status === "ARCHIVED") {
+      throw new BadRequestException("Archived entries cannot be scheduled.");
+    }
+
+    // Don't allow scheduling content that could not be published; validate and
+    // migrate onto the current active schema.
+    const latest = await this.latestActiveVersion(entry.contentTypeId);
+    const versionFields = latest
+      ? latest.fields
+      : entry.contentTypeVersion.fields;
+    this.validateData(
+      this.toFields(versionFields),
+      this.toData(entry.data),
+      "publish",
+    );
+
+    await this.db.client.$transaction([
+      this.db.client.contentEntry.update({
+        where: { id: entryId },
+        data: {
+          status: "SCHEDULED",
+          publishedAt: when,
+          ...(latest ? { contentTypeVersionId: latest.id } : {}),
+          updatedById: userId,
+        },
+      }),
+      this.db.client.auditLog.create({
+        data: {
+          organizationId: entry.site.organizationId,
+          siteId,
+          actorId: userId,
+          action: "entry.schedule",
+          entityType: "ContentEntry",
+          entityId: entryId,
+          metadata: { publishAt: when.toISOString() },
+        },
+      }),
+    ]);
+
+    return this.get(userId, siteId, entryId);
+  }
+
+  // Promotes scheduled entries whose time has arrived. Called by the worker.
+  async promoteDueScheduled(): Promise<number> {
+    const result = await this.db.client.contentEntry.updateMany({
+      where: { status: "SCHEDULED", publishedAt: { lte: new Date() } },
+      data: { status: "PUBLISHED" },
+    });
+    return result.count;
+  }
+
+  private async uniqueSlug(
+    contentTypeId: string,
+    base: string,
+  ): Promise<string> {
+    let candidate = base;
+    let suffix = 1;
+    // Slugs are unique per content type.
+    while (
+      await this.db.client.contentEntry.findFirst({
+        where: { contentTypeId, slug: candidate },
+        select: { id: true },
+      })
+    ) {
+      suffix += 1;
+      candidate = `${base}-${suffix}`;
+    }
+    return candidate;
+  }
+
   async listRevisions(
     userId: string,
     siteId: string,
@@ -548,6 +831,27 @@ export class EntriesService {
       status: revision.status,
       createdAt: revision.createdAt,
     }));
+  }
+
+  // The newest ACTIVE schema version for a content type, or null if the type
+  // is not currently active. Used so the editor always reflects the current
+  // fields (newly added fields appear immediately) and writes migrate the entry
+  // onto that version.
+  private async latestActiveVersion(
+    contentTypeId: string,
+  ): Promise<{ id: string; fields: unknown } | null> {
+    const contentType = await this.db.client.contentType.findFirst({
+      where: { id: contentTypeId, status: "ACTIVE" },
+      include: {
+        versions: {
+          orderBy: { version: "desc" },
+          take: 1,
+          select: { id: true, fields: true },
+        },
+      },
+    });
+    const version = contentType?.versions[0];
+    return version ? { id: version.id, fields: version.fields } : null;
   }
 
   private async resolveActiveVersion(contentTypeId: string, siteId: string) {
@@ -631,15 +935,23 @@ export class EntriesService {
       contentTypeVersionId: string;
       title: string;
       slug: string;
-      status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+      status: EntryStatus;
       data: unknown;
+      excerpt: string | null;
+      seoTitle: string | null;
+      seoDescription: string | null;
       publishedAt: Date | null;
       createdAt: Date;
       updatedAt: Date;
-      contentType: { name: string; kind: "COLLECTION" | "SINGLE" };
+      contentType: {
+        name: string;
+        kind: "COLLECTION" | "SINGLE";
+        slug: string;
+      };
       contentTypeVersion: { fields: unknown };
     },
     latestRevision: number | null,
+    fieldsOverride?: unknown,
   ): EntryDetail {
     return {
       id: entry.id,
@@ -648,11 +960,19 @@ export class EntriesService {
       contentTypeVersionId: entry.contentTypeVersionId,
       contentTypeName: entry.contentType.name,
       contentTypeKind: entry.contentType.kind,
+      contentTypeSlug: entry.contentType.slug,
       title: entry.title,
       slug: entry.slug,
       status: entry.status,
       data: this.toData(entry.data),
-      fields: this.toFields(entry.contentTypeVersion.fields),
+      // Prefer the current active schema so newly added fields render in the
+      // editor; fall back to the entry's bound version when the type is draft.
+      fields: this.toFields(
+        fieldsOverride ?? entry.contentTypeVersion.fields,
+      ),
+      excerpt: entry.excerpt,
+      seoTitle: entry.seoTitle,
+      seoDescription: entry.seoDescription,
       publishedAt: entry.publishedAt,
       latestRevision,
       createdAt: entry.createdAt,

@@ -263,6 +263,9 @@ title
 slug
 status
 dataJson
+excerpt?
+seoTitle?
+seoDescription?
 publishedAt?
 createdById
 updatedById
@@ -277,9 +280,20 @@ Initial statuses:
 
 ```text
 DRAFT
+SCHEDULED
 PUBLISHED
 ARCHIVED
 ```
+
+A `SCHEDULED` entry stores its future go-live time in `publishedAt`; a worker
+promotes it to `PUBLISHED` when due. `excerpt`, `seoTitle` and `seoDescription`
+are built-in editorial fields, separate from the dynamic custom fields in
+`dataJson`.
+
+`contentTypeVersionId` records the schema version the entry was last validated
+against. The editor renders the content type's current active version, and
+saving, publishing or scheduling migrates the entry onto that version — so
+fields added after creation appear on existing entries.
 
 ### ContentRevision
 

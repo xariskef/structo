@@ -243,6 +243,34 @@ archiving its backing item independently.
 Content types also carry `singularName` and `pluralName` so the UI can use
 natural labels ("New Article") instead of the technical word "entry".
 
+### D-116: Built-in Editorial Fields
+
+Status: accepted.
+
+Store `excerpt`, `seoTitle` and `seoDescription` as built-in `ContentEntry`
+columns rather than dynamic custom fields. They apply to every content type,
+pair with the site-level SEO defaults, and are edited from a dedicated editor
+sidebar — like WordPress core fields next to ACF custom fields.
+
+### D-117: Scheduled Publishing
+
+Status: accepted.
+
+A `SCHEDULED` entry status holds a future `publishedAt`. A `@nestjs/schedule`
+cron job promotes due scheduled entries to `PUBLISHED` every minute. Delivery
+treats only `PUBLISHED` entries as live.
+
+### D-118: Edit Against The Current Schema Version
+
+Status: accepted.
+
+The entry editor renders the content type's current active schema version, and
+saving, publishing or scheduling migrates the entry onto that version (and
+validates against it). Entries are no longer pinned to the version they were
+created with for editing. This makes newly added fields appear on existing
+content immediately (WordPress + ACF behaviour). Immutable per-entry version
+pinning can return later if true historical schema isolation is required.
+
 ## Open Decisions
 
 ### Q-002: Delivery Visibility

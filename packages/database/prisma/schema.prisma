@@ -152,6 +152,7 @@ enum ContentTypeStatus {
 
 enum ContentEntryStatus {
   DRAFT
+  SCHEDULED
   PUBLISHED
   ARCHIVED
 }
@@ -207,6 +208,9 @@ model ContentEntry {
   slug                 String
   status               ContentEntryStatus  @default(DRAFT)
   data                 Json                @default("{}")
+  excerpt              String?
+  seoTitle             String?
+  seoDescription       String?
   publishedAt          DateTime?
   createdById          String?
   updatedById          String?

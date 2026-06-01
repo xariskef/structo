@@ -42,14 +42,55 @@ export function PagesList({ siteId }: PagesListProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string>();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  function load() {
+    return apiRequest<ContentTypeSummary[]>(
+      `/manage/sites/${siteId}/content-types?kind=SINGLE`,
+    ).then((rows) => {
+      setPages(rows);
+      setSelected(new Set());
+    });
+  }
 
   useEffect(() => {
-    void apiRequest<ContentTypeSummary[]>(
-      `/manage/sites/${siteId}/content-types?kind=SINGLE`,
-    )
-      .then(setPages)
-      .finally(() => setLoading(false));
+    void load().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId]);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function runBulk(action: "publish" | "unpublish" | "archive") {
+    if (selected.size === 0) return;
+    if (
+      action === "archive" &&
+      !window.confirm(`Archive ${selected.size} page(s)?`)
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    try {
+      await apiRequest(`/manage/sites/${siteId}/content-types/bulk`, {
+        method: "POST",
+        body: JSON.stringify({ action, ids: [...selected] }),
+      });
+      await load();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Bulk action failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -74,9 +115,7 @@ export function PagesList({ siteId }: PagesListProps) {
       );
       router.push(`/dashboard/sites/${siteId}/pages/${created.id}`);
     } catch (e: unknown) {
-      setCreateError(
-        e instanceof Error ? e.message : "Unable to create page.",
-      );
+      setCreateError(e instanceof Error ? e.message : "Unable to create page.");
       setIsCreating(false);
     }
   }
@@ -89,9 +128,7 @@ export function PagesList({ siteId }: PagesListProps) {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             Content
           </p>
-          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">
-            Pages
-          </h1>
+          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">Pages</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Standalone pages with their own fields — home, about, contact, and
             other one-off layouts.
@@ -128,9 +165,8 @@ export function PagesList({ siteId }: PagesListProps) {
                       e.currentTarget.form?.querySelector<HTMLInputElement>(
                         '[name="slug"]',
                       );
-                    if (slug && !slug.dataset.edited) {
+                    if (slug && !slug.dataset.edited)
                       slug.value = slugify(e.currentTarget.value);
-                    }
                   }}
                 />
               </div>
@@ -155,14 +191,42 @@ export function PagesList({ siteId }: PagesListProps) {
               {createError && (
                 <p className="text-sm text-destructive">{createError}</p>
               )}
-              <div>
-                <Button type="submit" size="sm" disabled={isCreating}>
-                  {isCreating ? "Creating…" : "Create and configure"}
-                </Button>
-              </div>
+              <Button type="submit" size="sm" disabled={isCreating} className="w-fit">
+                {isCreating ? "Creating…" : "Create and configure"}
+              </Button>
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {error && (
+        <p className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      {/* Bulk bar */}
+      {selected.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-border bg-accent/30 px-3 py-2">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <div className="ml-auto flex gap-1.5">
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => runBulk("publish")}>
+              Publish
+            </Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => runBulk("unpublish")}>
+              Unpublish
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => runBulk("archive")}
+              className="text-destructive hover:text-destructive"
+            >
+              Archive
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* List */}
@@ -185,30 +249,37 @@ export function PagesList({ siteId }: PagesListProps) {
       ) : (
         <div className="flex flex-col gap-2">
           {pages.map((page) => (
-            <Link
+            <div
               key={page.id}
-              href={`/dashboard/sites/${siteId}/pages/${page.id}`}
-              className="group flex items-center justify-between rounded-lg border border-border bg-card px-5 py-4 transition-colors hover:border-primary/40 hover:bg-accent/20"
+              className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/40 hover:bg-accent/20"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-card-foreground">
-                    {page.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    /{page.slug} · {page.fieldCount} field
-                    {page.fieldCount !== 1 ? "s" : ""}
-                  </p>
-                </div>
-              </div>
+              <input
+                type="checkbox"
+                checked={selected.has(page.id)}
+                onChange={() => toggle(page.id)}
+                aria-label={`Select ${page.name}`}
+                className="h-4 w-4 shrink-0"
+              />
+              <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Link
+                href={`/dashboard/sites/${siteId}/pages/${page.id}`}
+                className="min-w-0 flex-1"
+              >
+                <p className="truncate font-medium text-card-foreground">
+                  {page.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  /{page.slug} · {page.fieldCount} field
+                  {page.fieldCount !== 1 ? "s" : ""}
+                </p>
+              </Link>
               <Badge
                 variant={STATUS_VARIANT[page.status] ?? "secondary"}
-                className="ml-4 shrink-0 text-[10px]"
+                className="ml-2 shrink-0 text-[10px]"
               >
                 {page.status}
               </Badge>
-            </Link>
+            </div>
           ))}
         </div>
       )}
