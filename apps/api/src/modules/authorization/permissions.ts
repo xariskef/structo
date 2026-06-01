@@ -14,6 +14,7 @@ export type SitePermission =
   | "site.create_content"
   | "site.edit_content"
   | "site.publish_content"
+  | "site.manage_taxonomies"
   | "site.manage_members"
   | "site.manage_settings";
 
@@ -44,6 +45,7 @@ export const INHERITED_SITE_PERMISSIONS: Record<
     "site.create_content",
     "site.edit_content",
     "site.publish_content",
+    "site.manage_taxonomies",
     "site.manage_members",
     "site.manage_settings",
   ],
@@ -53,6 +55,7 @@ export const INHERITED_SITE_PERMISSIONS: Record<
     "site.create_content",
     "site.edit_content",
     "site.publish_content",
+    "site.manage_taxonomies",
     "site.manage_members",
     "site.manage_settings",
   ],
@@ -69,6 +72,7 @@ export const SITE_ROLE_PERMISSIONS: Record<
     "site.create_content",
     "site.edit_content",
     "site.publish_content",
+    "site.manage_taxonomies",
     "site.manage_members",
     "site.manage_settings",
   ],
@@ -77,6 +81,7 @@ export const SITE_ROLE_PERMISSIONS: Record<
     "site.create_content",
     "site.edit_content",
     "site.publish_content",
+    "site.manage_taxonomies",
   ],
   AUTHOR: ["site.view", "site.create_content", "site.edit_content"],
   VIEWER: ["site.view"],

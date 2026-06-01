@@ -69,10 +69,7 @@ function entryDetail() {
 
 test("single pages serialize item creation before rejecting a second item", async () => {
   const client = singleContentTypeClient(1);
-  const service = new EntriesService(
-    { client },
-    authorization(),
-  );
+  const service = new EntriesService({ client }, authorization());
 
   await assert.rejects(
     service.create("user-a", "site-a", {
@@ -171,4 +168,29 @@ test("single page content is archived with its page, not as an entry", async () 
     service.archive("user-a", "site-a", "entry-1"),
     (error) => error instanceof BadRequestException,
   );
+});
+
+test("single page content cannot be hard deleted as an entry", async () => {
+  let deleted = false;
+  const client = {
+    contentEntry: {
+      findUnique() {
+        return {
+          ...entryDetail(),
+          contentType: { kind: "SINGLE" },
+          site: { organizationId: "org-a" },
+        };
+      },
+      delete() {
+        deleted = true;
+      },
+    },
+  };
+  const service = new EntriesService({ client }, authorization());
+
+  await assert.rejects(
+    service.remove("user-a", "site-a", "entry-1"),
+    (error) => error instanceof BadRequestException,
+  );
+  assert.equal(deleted, false);
 });

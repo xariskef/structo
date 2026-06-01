@@ -1,6 +1,8 @@
 import { FIELD_TYPES } from "@structo/field-kit";
 import type { FieldDefinition, FieldType } from "@structo/field-kit";
 import { z } from "zod";
+import type { EntryStatus } from "./entries.js";
+import { taxonomyKindSchema, type TaxonomyKind } from "./taxonomies.js";
 
 // Draft schemas allow incomplete configuration while an administrator is editing.
 // Activation applies the stricter configuration checks below.
@@ -276,6 +278,14 @@ export const updateContentTypeSchema = z.object({
   slug: contentTypeSlugSchema.optional(),
   description: z.string().max(500).optional(),
   fields: contentTypeFieldsSchema.optional(),
+  taxonomies: z
+    .array(taxonomyKindSchema)
+    .max(2)
+    .refine(
+      (taxonomies) => new Set(taxonomies).size === taxonomies.length,
+      "Taxonomies must be unique.",
+    )
+    .optional(),
 });
 
 export const bulkContentTypesSchema = z.object({
@@ -302,6 +312,7 @@ export interface ContentTypeSummary {
   // For single pages this is the id of the one backing item (null until first
   // opened). Collections leave this null.
   singleEntryId: string | null;
+  singleEntryStatus: EntryStatus | null;
   itemCount: number;
   createdAt: Date;
   updatedAt: Date;
@@ -320,6 +331,7 @@ export interface ContentTypeDetail {
   fields: FieldDefinition[];
   latestVersion: number | null;
   singleEntryId: string | null;
+  taxonomies: TaxonomyKind[];
   createdAt: Date;
   updatedAt: Date;
 }

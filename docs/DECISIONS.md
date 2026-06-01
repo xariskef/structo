@@ -258,7 +258,8 @@ Status: accepted.
 
 A `SCHEDULED` entry status holds a future `publishedAt`. A `@nestjs/schedule`
 cron job promotes due scheduled entries to `PUBLISHED` every minute. Delivery
-treats only `PUBLISHED` entries as live.
+treats only `PUBLISHED` entries as live. Worker promotion creates an immutable
+revision and audit event with no interactive actor.
 
 ### D-118: Edit Against The Current Schema Version
 
@@ -270,6 +271,21 @@ validates against it). Entries are no longer pinned to the version they were
 created with for editing. This makes newly added fields appear on existing
 content immediately (WordPress + ACF behaviour). Immutable per-entry version
 pinning can return later if true historical schema isolation is required.
+Controlled migration prunes keys removed by the newer schema, including nested
+group and repeater keys; undeclared keys remain invalid on normal writes.
+
+### D-119: Scoped Versioned Taxonomies With Shared Field Engine
+
+Status: accepted.
+
+Store categories and tags under explicit site-owned taxonomy definitions.
+Standalone pages share one Pages scope, while every collection owns isolated
+category and tag scopes. Categories support a validated parent hierarchy; tags
+remain flat. Terms include built-in description and SEO metadata and may store
+extra validated custom values through the same versioned field engine as
+entries. Each content type explicitly enables the taxonomy kinds its entries
+may use. Assignments reject cross-site terms, cross-collection terms and
+disabled taxonomy kinds.
 
 ## Open Decisions
 

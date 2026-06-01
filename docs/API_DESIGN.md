@@ -60,16 +60,26 @@ Initial route groups:
 /sites/:siteId/invitations
 /sites/:siteId/settings
 /sites/:siteId/content-types
+/sites/:siteId/content-types/bulk
 /sites/:siteId/content-types/:contentTypeId
 /sites/:siteId/content-types/:contentTypeId/activate
 /sites/:siteId/content-types/:contentTypeId/archive
 /sites/:siteId/content-types/:contentTypeId/single
 /sites/:siteId/entries
+/sites/:siteId/entries/bulk
 /sites/:siteId/entries/:entryId
+/sites/:siteId/entries/:entryId/duplicate
 /sites/:siteId/entries/:entryId/publish
 /sites/:siteId/entries/:entryId/unpublish
 /sites/:siteId/entries/:entryId/archive
+/sites/:siteId/entries/:entryId/schedule
 /sites/:siteId/entries/:entryId/revisions
+/sites/:siteId/entries/:entryId/available-taxonomy-terms
+/sites/:siteId/entries/:entryId/taxonomy-terms
+/sites/:siteId/taxonomy-definitions
+/sites/:siteId/taxonomy-definitions/:definitionId
+/sites/:siteId/taxonomy-definitions/:definitionId/terms
+/sites/:siteId/taxonomy-terms/:termId
 /sites/:siteId/api-tokens
 /sites/:siteId/media
 /sites/:siteId/audit-logs
@@ -94,8 +104,20 @@ Implemented management foundation:
   pages with versioned field schemas.
 - `POST /manage/sites/:siteId/content-types/:contentTypeId/single` resolves or
   creates the one backing item for a `SINGLE` page and rejects collections.
-- Entries support incomplete drafts, strict publishing, unpublishing, archival
-  and revision summaries.
+- Entries support incomplete drafts, strict publishing, scheduling,
+  unpublishing, archival, duplicate, hard delete, bulk actions and revision
+  summaries.
+- Single-page backing items cannot be archived or hard-deleted through generic
+  entry actions.
+- Scheduled publication creates the same immutable revision and audit trail as
+  an explicit publish action.
+- Taxonomy definitions use a shared Pages scope or an isolated collection
+  scope. Categories allow parent relationships; tags remain flat.
+- Taxonomy terms expose built-in descriptions and SEO metadata plus validated
+  custom data from immutable definition schema versions.
+- Content types opt into supported taxonomies, and entry assignments reject
+  terms from another site, another collection scope or a taxonomy not enabled
+  for that content type.
 
 ## Delivery API
 

@@ -111,20 +111,24 @@ model OrganizationMembership {
 }
 
 model Site {
-  id             String           @id @default(cuid())
-  organizationId String
-  name           String
-  key            String           @unique
-  slug           String
-  status         SiteStatus       @default(ACTIVE)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  memberships    SiteMembership[]
-  invitations    Invitation[]
-  settings       SiteSetting[]
-  contentTypes   ContentType[]
-  entries        ContentEntry[]
+  id                    String                     @id @default(cuid())
+  organizationId        String
+  name                  String
+  key                   String                     @unique
+  slug                  String
+  status                SiteStatus                 @default(ACTIVE)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships           SiteMembership[]
+  invitations           Invitation[]
+  settings              SiteSetting[]
+  contentTypes          ContentType[]
+  entries               ContentEntry[]
+  taxonomyDefinitions   TaxonomyDefinition[]
+  taxonomyTerms         TaxonomyTerm[]
+  contentTypeTaxonomies ContentTypeTaxonomy[]
+  entryTaxonomyTerms    ContentEntryTaxonomyTerm[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -162,6 +166,16 @@ enum ContentTypeKind {
   SINGLE
 }
 
+enum TaxonomyKind {
+  CATEGORY
+  TAG
+}
+
+enum TaxonomyScope {
+  PAGES
+  CONTENT_TYPE
+}
+
 model ContentType {
   id           String            @id @default(cuid())
   siteId       String
@@ -176,9 +190,11 @@ model ContentType {
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
-  site     Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  versions ContentTypeVersion[]
-  entries  ContentEntry[]
+  site                Site                  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  versions            ContentTypeVersion[]
+  entries             ContentEntry[]
+  taxonomies          ContentTypeTaxonomy[]
+  taxonomyDefinitions TaxonomyDefinition[]
 
   @@unique([siteId, slug])
   @@index([siteId])
@@ -200,31 +216,123 @@ model ContentTypeVersion {
 }
 
 model ContentEntry {
-  id                   String              @id @default(cuid())
+  id                   String             @id @default(cuid())
   siteId               String
   contentTypeId        String
   contentTypeVersionId String
   title                String
   slug                 String
-  status               ContentEntryStatus  @default(DRAFT)
-  data                 Json                @default("{}")
+  status               ContentEntryStatus @default(DRAFT)
+  data                 Json               @default("{}")
   excerpt              String?
   seoTitle             String?
   seoDescription       String?
   publishedAt          DateTime?
   createdById          String?
   updatedById          String?
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-  site               Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  contentType        ContentType        @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
-  contentTypeVersion ContentTypeVersion @relation(fields: [contentTypeVersionId], references: [id])
+  site               Site                       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contentType        ContentType                @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  contentTypeVersion ContentTypeVersion         @relation(fields: [contentTypeVersionId], references: [id])
   revisions          ContentRevision[]
+  taxonomyTerms      ContentEntryTaxonomyTerm[]
 
   @@unique([contentTypeId, slug])
   @@index([siteId, status])
+  @@index([status, publishedAt])
   @@index([contentTypeId])
+}
+
+model TaxonomyDefinition {
+  id            String        @id @default(cuid())
+  siteId        String
+  contentTypeId String?
+  scope         TaxonomyScope
+  scopeKey      String
+  kind          TaxonomyKind
+  fields        Json          @default("[]")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  site        Site                        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contentType ContentType?                @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  versions    TaxonomyDefinitionVersion[]
+  terms       TaxonomyTerm[]
+
+  @@unique([siteId, scopeKey, kind])
+  @@index([contentTypeId])
+}
+
+model TaxonomyDefinitionVersion {
+  id                   String   @id @default(cuid())
+  taxonomyDefinitionId String
+  version              Int
+  fields               Json
+  createdById          String?
+  createdAt            DateTime @default(now())
+
+  taxonomyDefinition TaxonomyDefinition @relation(fields: [taxonomyDefinitionId], references: [id], onDelete: Cascade)
+  terms              TaxonomyTerm[]
+
+  @@unique([taxonomyDefinitionId, version])
+  @@index([taxonomyDefinitionId])
+}
+
+model TaxonomyTerm {
+  id                          String       @id @default(cuid())
+  siteId                      String
+  taxonomyDefinitionId        String
+  taxonomyDefinitionVersionId String
+  kind                        TaxonomyKind
+  name                        String
+  slug                        String
+  description                 String?
+  seoTitle                    String?
+  seoDescription              String?
+  data                        Json         @default("{}")
+  parentId                    String?
+  createdAt                   DateTime     @default(now())
+  updatedAt                   DateTime     @updatedAt
+
+  site                      Site                       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  taxonomyDefinition        TaxonomyDefinition         @relation(fields: [taxonomyDefinitionId], references: [id], onDelete: Cascade)
+  taxonomyDefinitionVersion TaxonomyDefinitionVersion  @relation(fields: [taxonomyDefinitionVersionId], references: [id])
+  parent                    TaxonomyTerm?              @relation("TaxonomyTermHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children                  TaxonomyTerm[]             @relation("TaxonomyTermHierarchy")
+  entries                   ContentEntryTaxonomyTerm[]
+
+  @@unique([taxonomyDefinitionId, slug])
+  @@index([siteId, kind])
+  @@index([taxonomyDefinitionId])
+  @@index([parentId])
+}
+
+model ContentTypeTaxonomy {
+  siteId        String
+  contentTypeId String
+  taxonomy      TaxonomyKind
+
+  site        Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contentType ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+
+  @@id([contentTypeId, taxonomy])
+  @@index([siteId, taxonomy])
+}
+
+model ContentEntryTaxonomyTerm {
+  siteId  String
+  entryId String
+  termId  String
+
+  site  Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  entry ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  term  TaxonomyTerm @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, termId])
+  @@index([siteId])
+  @@index([termId])
 }
 
 model ContentRevision {

@@ -22,10 +22,7 @@ interface CollectionsListProps {
   siteId: string;
 }
 
-const STATUS_VARIANT: Record<
-  string,
-  "default" | "secondary" | "outline"
-> = {
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   ACTIVE: "default",
   DRAFT: "secondary",
   ARCHIVED: "outline",
@@ -136,10 +133,9 @@ export function CollectionsList({ siteId }: CollectionsListProps) {
                     const form = e.currentTarget.form;
                     if (!form) return;
                     const value = e.currentTarget.value;
-                    const singular =
-                      form.querySelector<HTMLInputElement>(
-                        '[name="singularName"]',
-                      );
+                    const singular = form.querySelector<HTMLInputElement>(
+                      '[name="singularName"]',
+                    );
                     const slug =
                       form.querySelector<HTMLInputElement>('[name="slug"]');
                     if (singular && !singular.dataset.edited) {
@@ -211,7 +207,11 @@ export function CollectionsList({ siteId }: CollectionsListProps) {
           <p className="mt-1 text-xs text-muted-foreground/70">
             Create your first collection to start modeling repeatable content.
           </p>
-          <Button size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
+          <Button
+            size="sm"
+            className="mt-4"
+            onClick={() => setShowCreate(true)}
+          >
             <Plus className="mr-1.5 h-4 w-4" />
             New collection
           </Button>

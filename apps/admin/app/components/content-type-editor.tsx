@@ -10,7 +10,7 @@ import {
 } from "@structo/ui/components/card";
 import { Input } from "@structo/ui/components/input";
 import { Label } from "@structo/ui/components/label";
-import type { ContentTypeDetail } from "@structo/contracts";
+import type { ContentTypeDetail, TaxonomyKind } from "@structo/contracts";
 import {
   FIELD_TYPE_GROUPS,
   FIELD_TYPE_META,
@@ -431,6 +431,124 @@ function NestedFieldsEditor({
   );
 }
 
+export function FieldsBuilder({
+  fields,
+  onChange,
+  readOnly = false,
+}: {
+  fields: FieldDefinition[];
+  onChange: (fields: FieldDefinition[]) => void;
+  readOnly?: boolean;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+
+  function addField(type: FieldType) {
+    const label = FIELD_TYPE_META[type].label;
+    onChange([...fields, createField(type, label, labelToKey(label))]);
+    setShowPicker(false);
+  }
+
+  function updateField(index: number, updated: FieldDefinition) {
+    onChange(
+      fields.map((field, current) => (current === index ? updated : field)),
+    );
+  }
+
+  function deleteField(index: number) {
+    onChange(fields.filter((_, current) => current !== index));
+  }
+
+  function moveField(index: number, direction: "up" | "down") {
+    const next = [...fields];
+    const swap = direction === "up" ? index - 1 : index + 1;
+    if (swap < 0 || swap >= next.length) return;
+    [next[index], next[swap]] = [next[swap]!, next[index]!];
+    onChange(next);
+  }
+
+  return (
+    <>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-base font-semibold">
+          Fields{" "}
+          <span className="text-sm font-normal text-muted-foreground">
+            ({fields.length})
+          </span>
+        </h2>
+        {!readOnly && !showPicker && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setShowPicker(true)}
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add field
+          </Button>
+        )}
+      </div>
+
+      {showPicker && (
+        <FieldTypePicker
+          onSelect={addField}
+          onCancel={() => setShowPicker(false)}
+        />
+      )}
+
+      {fields.length === 0 && !showPicker ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-10 text-center">
+          <p className="text-sm text-muted-foreground">No fields yet</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">
+            Add a field when this schema needs extra structured data.
+          </p>
+          {!readOnly && (
+            <Button
+              type="button"
+              size="sm"
+              className="mt-3"
+              onClick={() => setShowPicker(true)}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add field
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {fields.map((field, index) =>
+            readOnly ? (
+              <div
+                key={field.id}
+                className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5"
+              >
+                <span className="truncate text-sm font-medium">
+                  {field.label}
+                </span>
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                  {field.key}
+                </span>
+                <Badge variant="outline" className="shrink-0 py-0 text-[10px]">
+                  {FIELD_TYPE_META[field.type]?.label ?? field.type}
+                </Badge>
+              </div>
+            ) : (
+              <FieldRow
+                key={field.id}
+                field={field}
+                index={index}
+                total={fields.length}
+                onUpdate={(updated) => updateField(index, updated)}
+                onDelete={() => deleteField(index)}
+                onMove={(direction) => moveField(index, direction)}
+              />
+            ),
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Main editor ──────────────────────────────────────────────────────────
 
 export function ContentTypeEditor({
@@ -440,12 +558,12 @@ export function ContentTypeEditor({
 }: ContentTypeEditorProps) {
   const [ct, setCt] = useState<ContentTypeDetail | null>(null);
   const [fields, setFields] = useState<FieldDefinition[]>([]);
+  const [taxonomies, setTaxonomies] = useState<TaxonomyKind[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState<string>();
-  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     void apiRequest<ContentTypeDetail>(
@@ -454,6 +572,7 @@ export function ContentTypeEditor({
       .then((data) => {
         setCt(data);
         setFields(data.fields);
+        setTaxonomies(data.taxonomies);
       })
       .catch((e: unknown) => {
         setError(e instanceof Error ? e.message : "Unable to load structure.");
@@ -468,11 +587,12 @@ export function ContentTypeEditor({
         `/manage/sites/${siteId}/content-types/${contentTypeId}`,
         {
           method: "PATCH",
-          body: JSON.stringify({ fields }),
+          body: JSON.stringify({ fields, taxonomies }),
         },
       );
       setCt(updated);
       setFields(updated.fields);
+      setTaxonomies(updated.taxonomies);
       onContentTypeChange?.(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -520,29 +640,12 @@ export function ContentTypeEditor({
     }
   }
 
-  function addField(type: FieldType) {
-    const label = FIELD_TYPE_META[type].label;
-    const key = labelToKey(label);
-    setFields((prev) => [...prev, createField(type, label, key)]);
-    setShowPicker(false);
-  }
-
-  function updateField(index: number, updated: FieldDefinition) {
-    setFields((prev) => prev.map((f, i) => (i === index ? updated : f)));
-  }
-
-  function deleteField(index: number) {
-    setFields((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function moveField(index: number, direction: "up" | "down") {
-    setFields((prev) => {
-      const next = [...prev];
-      const swap = direction === "up" ? index - 1 : index + 1;
-      if (swap < 0 || swap >= next.length) return prev;
-      [next[index], next[swap]] = [next[swap]!, next[index]!];
-      return next;
-    });
+  function toggleTaxonomy(taxonomy: TaxonomyKind) {
+    setTaxonomies((previous) =>
+      previous.includes(taxonomy)
+        ? previous.filter((candidate) => candidate !== taxonomy)
+        : [...previous, taxonomy],
+    );
   }
 
   if (!ct) {
@@ -630,84 +733,32 @@ export function ContentTypeEditor({
         </p>
       )}
 
-      {/* Fields section */}
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-base font-semibold">
-          Fields{" "}
-          <span className="text-sm font-normal text-muted-foreground">
-            ({fields.length})
-          </span>
-        </h2>
-        {ct.status !== "ARCHIVED" && !showPicker && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setShowPicker(true)}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add field
-          </Button>
-        )}
-      </div>
-
-      {/* Field type picker */}
-      {showPicker && (
-        <FieldTypePicker
-          onSelect={addField}
-          onCancel={() => setShowPicker(false)}
-        />
-      )}
-
-      {/* Field list */}
-      {fields.length === 0 && !showPicker ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-10 text-center">
-          <p className="text-sm text-muted-foreground">No fields yet</p>
-          <p className="mt-1 text-xs text-muted-foreground/70">
-            Add your first field to define this content type.
-          </p>
-          {ct.status !== "ARCHIVED" && (
-            <Button
-              type="button"
-              size="sm"
-              className="mt-3"
-              onClick={() => setShowPicker(true)}
-            >
-              <Plus className="mr-1.5 h-4 w-4" />
-              Add field
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {fields.map((field, i) => (
-            ct.status === "ARCHIVED" ? (
-              <div
-                key={field.id}
-                className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5"
-              >
-                <span className="truncate text-sm font-medium">{field.label}</span>
-                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                  {field.key}
-                </span>
-                <Badge variant="outline" className="shrink-0 py-0 text-[10px]">
-                  {FIELD_TYPE_META[field.type]?.label ?? field.type}
-                </Badge>
-              </div>
-            ) : (
-              <FieldRow
-                key={field.id}
-                field={field}
-                index={i}
-                total={fields.length}
-                onUpdate={(updated) => updateField(i, updated)}
-                onDelete={() => deleteField(i)}
-                onMove={(dir) => moveField(i, dir)}
+      <div className="mb-6 rounded-lg border border-border bg-card p-4">
+        <h2 className="text-base font-semibold">Taxonomies</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Enable the editorial terms editors can assign to this content type.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-4">
+          {(["CATEGORY", "TAG"] as const).map((taxonomy) => (
+            <label key={taxonomy} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={taxonomies.includes(taxonomy)}
+                disabled={ct.status === "ARCHIVED"}
+                onChange={() => toggleTaxonomy(taxonomy)}
+                className="h-4 w-4"
               />
-            )
+              {taxonomy === "CATEGORY" ? "Categories" : "Tags"}
+            </label>
           ))}
         </div>
-      )}
+      </div>
+
+      <FieldsBuilder
+        fields={fields}
+        onChange={setFields}
+        readOnly={ct.status === "ARCHIVED"}
+      />
     </div>
   );
 }

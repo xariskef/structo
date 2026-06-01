@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { AppModule } from "./app.module.js";
 
 const DEFAULT_API_PORT = 3001;
+const inheritedEnvironment = { ...process.env };
 
 config({
   path: fileURLToPath(new URL("../../../.env", import.meta.url)),
@@ -17,6 +18,9 @@ config({
   path: fileURLToPath(new URL("../../../.env.local", import.meta.url)),
   override: true,
 });
+
+// Explicit shell values win while .env.local still overrides .env defaults.
+Object.assign(process.env, inheritedEnvironment);
 
 function resolvePort(value: string | undefined): number {
   if (!value) {

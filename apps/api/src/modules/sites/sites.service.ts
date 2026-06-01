@@ -99,6 +99,22 @@ export class SitesService {
         name: input.name,
         slug: input.slug,
         key: `site_${randomBytes(18).toString("base64url")}`,
+        taxonomyDefinitions: {
+          create: [
+            {
+              scope: "PAGES",
+              scopeKey: "pages",
+              kind: "CATEGORY",
+              versions: { create: { version: 1, fields: [] } },
+            },
+            {
+              scope: "PAGES",
+              scopeKey: "pages",
+              kind: "TAG",
+              versions: { create: { version: 1, fields: [] } },
+            },
+          ],
+        },
       },
       select: {
         id: true,

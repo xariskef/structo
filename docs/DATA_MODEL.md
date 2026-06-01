@@ -274,6 +274,7 @@ updatedAt
 
 unique(contentTypeId, slug)
 index(siteId, status)
+index(status, publishedAt)
 ```
 
 Initial statuses:
@@ -286,14 +287,105 @@ ARCHIVED
 ```
 
 A `SCHEDULED` entry stores its future go-live time in `publishedAt`; a worker
-promotes it to `PUBLISHED` when due. `excerpt`, `seoTitle` and `seoDescription`
-are built-in editorial fields, separate from the dynamic custom fields in
-`dataJson`.
+promotes it to `PUBLISHED` when due and records an immutable revision plus an
+audit event. `excerpt`, `seoTitle` and `seoDescription` are built-in editorial
+fields, separate from the dynamic custom fields in `dataJson`.
 
 `contentTypeVersionId` records the schema version the entry was last validated
 against. The editor renders the content type's current active version, and
 saving, publishing or scheduling migrates the entry onto that version — so
 fields added after creation appear on existing entries.
+
+### TaxonomyDefinition
+
+Defines one category or tag schema inside an explicit editorial scope.
+
+```text
+id
+siteId
+contentTypeId?
+scope             PAGES | CONTENT_TYPE
+scopeKey
+kind              CATEGORY | TAG
+fieldsJson
+createdAt
+updatedAt
+
+unique(siteId, scopeKey, kind)
+```
+
+Standalone pages share the `pages` scope key. Every collection owns a separate
+`content-type:<id>` scope key.
+
+### TaxonomyDefinitionVersion
+
+Stores an immutable snapshot whenever taxonomy custom fields are saved.
+
+```text
+id
+taxonomyDefinitionId
+version
+fieldsJson
+createdById?
+createdAt
+
+unique(taxonomyDefinitionId, version)
+```
+
+### TaxonomyTerm
+
+Stores one scoped category or tag. Categories can form a hierarchy through
+`parentId`; tags remain flat. Description and SEO metadata are built in, while
+extra structured values live in `dataJson`.
+
+```text
+id
+siteId
+taxonomyDefinitionId
+taxonomyDefinitionVersionId
+kind
+name
+slug
+description?
+seoTitle?
+seoDescription?
+dataJson
+parentId?
+createdAt
+updatedAt
+
+unique(taxonomyDefinitionId, slug)
+index(siteId, kind)
+index(taxonomyDefinitionId)
+index(parentId)
+```
+
+### ContentTypeTaxonomy
+
+Enables a supported taxonomy for one content type.
+
+```text
+siteId
+contentTypeId
+taxonomy
+
+primary(contentTypeId, taxonomy)
+index(siteId, taxonomy)
+```
+
+### ContentEntryTaxonomyTerm
+
+Assigns one taxonomy term to one content entry.
+
+```text
+siteId
+entryId
+termId
+
+primary(entryId, termId)
+index(siteId)
+index(termId)
+```
 
 ### ContentRevision
 
@@ -401,11 +493,23 @@ collecting visitor data.
 - Every site-owned record contains `siteId`.
 - Every site-scoped query checks access to the requested site.
 - Slugs are unique within the smallest meaningful tenant scope.
-- Content entries are validated against the stored content type version.
+- Content entries record the schema version used for their latest validation.
 - A `SINGLE` content type has exactly one backing item after first access.
 - Single-page first creation is serialized in the service layer and its backing
-  item is archived only through the parent content type.
+  item can be archived or removed only through the parent content type.
 - Incomplete entry drafts are allowed while editing.
-- Publishing requires strict validation against the referenced immutable
+- Saving, publishing and scheduling move entries to the current active schema
+  version. Migration prunes keys removed by newer schemas.
+- Publishing and scheduling require strict validation against the current active
   content type version.
+- Taxonomy definitions, terms, content-type taxonomy opt-ins and entry
+  assignments are explicitly site-scoped.
+- Standalone pages share one taxonomy scope. Every collection owns an isolated
+  taxonomy scope.
+- Taxonomy schemas use immutable versions and term custom data is validated
+  against the latest schema when saved.
+- Categories can reference parents only inside the same taxonomy definition and
+  cannot form ancestry cycles. Tags cannot have parents.
+- Entry taxonomy assignments accept only terms enabled for that content type.
+- Entry taxonomy assignments reject terms from another collection scope.
 - Published delivery queries never return drafts.

@@ -34,10 +34,7 @@ export const bulkEntriesSchema = z.object({
 });
 
 export const scheduleEntrySchema = z.object({
-  publishAt: z
-    .string()
-    .datetime({ offset: true })
-    .or(z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date.")),
+  publishAt: z.string().datetime({ offset: true }),
 });
 
 export type CreateEntryInput = z.infer<typeof createEntrySchema>;
@@ -45,7 +42,13 @@ export type UpdateEntryInput = z.infer<typeof updateEntrySchema>;
 export type BulkEntriesInput = z.infer<typeof bulkEntriesSchema>;
 export type ScheduleEntryInput = z.infer<typeof scheduleEntrySchema>;
 
-export type EntryStatus = "DRAFT" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED";
+export const entryStatusSchema = z.enum([
+  "DRAFT",
+  "SCHEDULED",
+  "PUBLISHED",
+  "ARCHIVED",
+]);
+export type EntryStatus = z.infer<typeof entryStatusSchema>;
 
 export interface EntrySummary {
   id: string;

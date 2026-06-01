@@ -37,6 +37,40 @@ collections or pages do not require new database tables or application code.
 A single page is archived as a content type. Its backing item is not archived
 independently.
 
+## Taxonomies
+
+Structo supports two editorial taxonomy kinds:
+
+```text
+CATEGORY  hierarchical
+TAG       flat
+```
+
+Taxonomy terms do not live in one ambiguous site-wide pool. Standalone pages
+share one `PAGES` scope. Every collection receives its own `CONTENT_TYPE` scope,
+so an Articles category cannot be assigned to a Services item.
+
+Each category and tag definition stores a versioned custom field schema using
+the same field engine as content entries. Terms always include:
+
+```text
+name
+slug
+description
+seoTitle
+seoDescription
+```
+
+Extra values such as an icon, archive image, color, rich introduction or nested
+metadata live in term `dataJson`. Existing terms render the latest definition
+schema and move to its latest immutable version when saved. Removed custom keys
+are pruned during that migration.
+
+Each content type explicitly enables the taxonomy kinds its entries can use.
+Entry assignments are validated server-side: a term must belong to the same
+site, its scope must match the entry, and its taxonomy kind must be enabled.
+Disabling a taxonomy from a content type removes stale assignments of that kind.
+
 ## Storage Strategy
 
 Each content type has an immutable versioned schema. Each content entry stores
@@ -88,7 +122,8 @@ time
 richtext
 ```
 
-Rich text should be stored as editor JSON, not arbitrary HTML.
+`richText` values are edited with TipTap and stored as HTML inside entry JSON.
+Stored HTML is untrusted content and must be sanitized before delivery rendering.
 
 ### Media Fields
 
@@ -172,7 +207,8 @@ key is a schema migration, not a cosmetic edit.
 Validation occurs in two layers:
 
 1. Validate the content type schema itself.
-2. Validate each content entry against its referenced schema version.
+2. Validate each content entry against the current active schema version when it
+   is saved, published or scheduled.
 
 Implemented tools:
 
@@ -185,12 +221,14 @@ The administration UI must not be the only validation layer.
 
 - Draft schema edits can change freely before activation.
 - Activating a changed schema creates a new immutable version.
-- Existing entries keep their original schema version until migrated.
+- Existing entries record the schema version they were last validated against.
 - Entry drafts can be incomplete while editors work on them.
-- Publishing validates every required field against the referenced immutable
+- Saving, publishing or scheduling migrates an entry to the current active
   schema version.
-- Entry edits should provide a controlled migration path when a newer content
-  type version exists.
+- Controlled migration removes keys deleted by a newer schema, including nested
+  group and repeater keys. Normal writes still reject undeclared keys.
+- Publishing and scheduling validate every required field against the current
+  active schema version.
 
 ## Later Extensions
 

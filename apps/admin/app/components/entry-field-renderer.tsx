@@ -7,6 +7,12 @@ import { Button } from "@structo/ui/components/button";
 import type { FieldDefinition } from "@structo/field-kit";
 import { isNestedField } from "@structo/field-kit";
 import { Plus, Trash2 } from "lucide-react";
+import {
+  cloneElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 import { RichTextEditor } from "./rich-text-editor";
 
@@ -345,13 +351,23 @@ function FieldWrap({
   inline = false,
 }: {
   field: FieldDefinition;
-  children: React.ReactNode;
+  children: ReactNode;
   inline?: boolean;
 }) {
+  const controlId = `field-${field.id}`;
+  // Associate the label with the rendered control so it is reachable by its
+  // label (accessibility + getByLabel in tests). Inline controls (e.g. boolean)
+  // already sit inside the label.
+  const control =
+    !inline && isValidElement(children)
+      ? cloneElement(children as ReactElement<{ id?: string }>, {
+          id: controlId,
+        })
+      : children;
   return (
-    <div className={`grid gap-1.5 ${isNestedField(field.type) ? "" : ""}`}>
+    <div className="grid gap-1.5">
       <Label
-        htmlFor={`field-${field.id}`}
+        htmlFor={controlId}
         className={inline ? "flex items-center gap-2 cursor-pointer" : ""}
       >
         {inline && children}
@@ -365,7 +381,7 @@ function FieldWrap({
           </span>
         )}
       </Label>
-      {!inline && children}
+      {!inline && control}
     </div>
   );
 }

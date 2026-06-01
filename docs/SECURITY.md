@@ -84,6 +84,7 @@ site.manage_content_types
 site.create_content
 site.edit_content
 site.publish_content
+site.manage_taxonomies
 site.manage_members
 site.manage_settings
 ```
@@ -109,10 +110,19 @@ edit drafts but cannot publish.
 - Validate present draft entry values server-side before persistence.
 - Reject undeclared dynamic entry keys.
 - Validate all required values again before publishing.
-- Store rich text as structured JSON.
-- Sanitize any future HTML rendering at the frontend boundary.
+- Treat stored TipTap rich-text HTML as untrusted content.
+- Sanitize rich-text HTML at the delivery or frontend rendering boundary before
+  inserting it into a document.
 - Do not execute dynamic JavaScript stored in the database.
 - Do not use `eval()` or `new Function()`.
+- Scope taxonomy definitions, terms and entry assignments to the requested
+  site.
+- Reject cross-site taxonomy parents, ancestry cycles and assignments for
+  taxonomies not enabled by the entry's content type.
+- Reject taxonomy assignments from another collection scope even when both
+  collections belong to the same site.
+- Validate dynamic taxonomy term values against the latest definition schema
+  and prune removed keys only during controlled schema migration.
 
 ## Media
 

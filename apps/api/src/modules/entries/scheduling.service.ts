@@ -18,7 +18,9 @@ export class SchedulingService {
     try {
       const promoted = await this.entriesService.promoteDueScheduled();
       if (promoted > 0) {
-        this.logger.log(`Published ${promoted} scheduled entr${promoted === 1 ? "y" : "ies"}.`);
+        this.logger.log(
+          `Published ${promoted} scheduled entr${promoted === 1 ? "y" : "ies"}.`,
+        );
       }
     } catch (error) {
       this.logger.error("Failed to promote scheduled entries.", error);

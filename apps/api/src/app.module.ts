@@ -13,6 +13,7 @@ import { InvitationsModule } from "./modules/invitations/invitations.module.js";
 import { OrganizationsModule } from "./modules/organizations/organizations.module.js";
 import { SettingsModule } from "./modules/settings/settings.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
+import { TaxonomiesModule } from "./modules/taxonomies/taxonomies.module.js";
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SitesModule } from "./modules/sites/sites.module.js";
     OrganizationsModule,
     SettingsModule,
     SitesModule,
+    TaxonomiesModule,
   ],
   providers: [
     {

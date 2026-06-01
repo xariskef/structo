@@ -5,6 +5,7 @@ import { BadRequestException } from "@nestjs/common";
 
 import {
   bulkEntriesSchema,
+  entryStatusSchema,
   scheduleEntrySchema,
 } from "@structo/contracts";
 import { EntriesService } from "../dist/modules/entries/entries.service.js";
@@ -17,8 +18,12 @@ test("bulkEntriesSchema validates actions and ids", () => {
   assert.ok(
     bulkEntriesSchema.safeParse({ action: "publish", entryIds: ["a"] }).success,
   );
-  assert.ok(!bulkEntriesSchema.safeParse({ action: "nope", entryIds: ["a"] }).success);
-  assert.ok(!bulkEntriesSchema.safeParse({ action: "delete", entryIds: [] }).success);
+  assert.ok(
+    !bulkEntriesSchema.safeParse({ action: "nope", entryIds: ["a"] }).success,
+  );
+  assert.ok(
+    !bulkEntriesSchema.safeParse({ action: "delete", entryIds: [] }).success,
+  );
 });
 
 test("scheduleEntrySchema accepts an ISO datetime", () => {
@@ -26,7 +31,17 @@ test("scheduleEntrySchema accepts an ISO datetime", () => {
     scheduleEntrySchema.safeParse({ publishAt: "2030-01-01T10:00:00.000Z" })
       .success,
   );
-  assert.ok(!scheduleEntrySchema.safeParse({ publishAt: "not-a-date" }).success);
+  assert.ok(
+    !scheduleEntrySchema.safeParse({ publishAt: "not-a-date" }).success,
+  );
+  assert.ok(
+    !scheduleEntrySchema.safeParse({ publishAt: "January 1, 2030" }).success,
+  );
+});
+
+test("entryStatusSchema rejects unknown status filters", () => {
+  assert.ok(entryStatusSchema.safeParse("SCHEDULED").success);
+  assert.ok(!entryStatusSchema.safeParse("unknown").success);
 });
 
 test("schedule rejects a past date", async () => {
@@ -168,4 +183,118 @@ test("duplicate creates a DRAFT copy with a unique slug", async () => {
   assert.equal(createdData.slug, "hello-copy-2");
   assert.equal(createdData.status, "DRAFT");
   assert.equal(result.status, "DRAFT");
+});
+
+test("update prunes removed keys when migrating to the current schema", async () => {
+  const keep = {
+    id: "f1",
+    type: "text",
+    label: "Keep",
+    key: "keep",
+    required: false,
+    config: {},
+  };
+  const group = {
+    id: "f2",
+    type: "group",
+    label: "Group",
+    key: "group",
+    required: false,
+    config: { fields: [keep] },
+  };
+  let updatedData;
+  const client = {
+    contentEntry: {
+      findUnique() {
+        return {
+          id: "e1",
+          siteId: "site-a",
+          contentTypeId: "ct1",
+          contentTypeVersionId: "v1",
+          status: "DRAFT",
+          contentTypeVersion: { fields: [] },
+          site: { organizationId: "org" },
+        };
+      },
+      update({ data }) {
+        updatedData = data.data;
+        return {};
+      },
+    },
+    contentType: {
+      findFirst() {
+        return { versions: [{ id: "v2", fields: [keep, group] }] };
+      },
+    },
+    auditLog: {
+      create() {
+        return {};
+      },
+    },
+    $transaction(values) {
+      return Promise.all(values);
+    },
+  };
+  const service = new EntriesService({ client }, authorization());
+  service.get = async () => ({});
+
+  await service.update("u", "site-a", "e1", {
+    data: {
+      keep: "yes",
+      removed: "old",
+      group: { keep: "nested", removed: "old nested" },
+    },
+  });
+
+  assert.deepEqual(updatedData, {
+    keep: "yes",
+    group: { keep: "nested" },
+  });
+});
+
+test("scheduled promotion creates a revision and an audit event", async () => {
+  let revisionData;
+  let auditData;
+  const client = {
+    contentEntry: {
+      findMany() {
+        return [{ id: "e1" }];
+      },
+    },
+    $transaction(callback) {
+      return callback({
+        contentEntry: {
+          updateMany() {
+            return { count: 1 };
+          },
+          findUnique() {
+            return {
+              siteId: "site-a",
+              data: { content: "<p>Hello</p>" },
+              site: { organizationId: "org" },
+              revisions: [{ revision: 2 }],
+            };
+          },
+        },
+        contentRevision: {
+          create({ data }) {
+            revisionData = data;
+          },
+        },
+        auditLog: {
+          create({ data }) {
+            auditData = data;
+          },
+        },
+      });
+    },
+  };
+  const service = new EntriesService({ client }, authorization());
+
+  assert.equal(await service.promoteDueScheduled(), 1);
+  assert.equal(revisionData.revision, 3);
+  assert.equal(revisionData.status, "PUBLISHED");
+  assert.equal(revisionData.createdById, null);
+  assert.equal(auditData.action, "entry.publish_scheduled");
+  assert.equal(auditData.actorId, null);
 });

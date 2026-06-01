@@ -25,8 +25,10 @@ Rules:
 - Store local development values in the ignored root `.env` or `.env.local`
   file.
 - Store deployment values in the hosting provider's secret storage.
-- Environment variables supplied by the deployment environment take
-  precedence over values in the local root `.env`.
+- Environment variables supplied by the shell or deployment environment take
+  precedence over values in the local root `.env` and `.env.local` files.
+- When no explicit environment variable exists, `.env.local` overrides `.env`
+  defaults for local development.
 - Store real values only in ignored local environment files or deployment
   secret storage.
 - Commit placeholders only in `.env.example`.
@@ -67,11 +69,18 @@ the normal workflow.
 20260531113000_add_auth_sessions_invitations
 20260531120530_add_content_types
 20260531122931_add_content_entries
+20260531154031_add_content_type_kind
+20260601100438_add_entry_seo_excerpt_scheduled
+20260601120000_add_scheduled_entry_index
+20260601123000_add_taxonomies
+20260601143000_scope_taxonomies_and_add_term_fields
 ```
 
 The migrations create identity and tenancy, settings and audit logs,
 authentication sessions and invitations, versioned content types, and content
-entries with publish revisions.
+entries with publish revisions, collection and single-page structures,
+editorial metadata and scheduling, and scoped versioned taxonomies with dynamic
+term fields.
 
 ## Neon Setup Checklist
 

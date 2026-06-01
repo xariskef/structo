@@ -35,6 +35,11 @@ interface CollectionItemsProps {
   collection: ContentTypeDetail;
 }
 
+interface BulkResult {
+  affected: number;
+  failed: number;
+}
+
 const STATUS_FILTERS = [
   "ALL",
   "DRAFT",
@@ -69,8 +74,7 @@ export function CollectionItems({ siteId, collection }: CollectionItemsProps) {
   const base = `/dashboard/sites/${siteId}/collections/${collection.id}/items`;
 
   function load() {
-    const statusParam =
-      statusFilter === "ALL" ? "" : `&status=${statusFilter}`;
+    const statusParam = statusFilter === "ALL" ? "" : `&status=${statusFilter}`;
     return apiRequest<EntrySummary[]>(
       `/manage/sites/${siteId}/entries?contentTypeId=${collection.id}${statusParam}`,
     ).then((rows) => {
@@ -82,9 +86,15 @@ export function CollectionItems({ siteId, collection }: CollectionItemsProps) {
   useEffect(() => {
     if (!isActive) return;
     let cancelled = false;
-    void load().finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+    void load()
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Unable to load items.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -136,11 +146,19 @@ export function CollectionItems({ siteId, collection }: CollectionItemsProps) {
     setBusy(true);
     setError(undefined);
     try {
-      await apiRequest(`/manage/sites/${siteId}/entries/bulk`, {
-        method: "POST",
-        body: JSON.stringify({ action, entryIds: [...selected] }),
-      });
+      const result = await apiRequest<BulkResult>(
+        `/manage/sites/${siteId}/entries/bulk`,
+        {
+          method: "POST",
+          body: JSON.stringify({ action, entryIds: [...selected] }),
+        },
+      );
       await load();
+      if (result.failed > 0) {
+        setError(
+          `${result.affected} item(s) updated. ${result.failed} item(s) could not be updated.`,
+        );
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Bulk action failed.");
     } finally {
@@ -295,7 +313,12 @@ export function CollectionItems({ siteId, collection }: CollectionItemsProps) {
               {createError && (
                 <p className="text-sm text-destructive">{createError}</p>
               )}
-              <Button type="submit" size="sm" disabled={isCreating} className="w-fit">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isCreating}
+                className="w-fit"
+              >
                 {isCreating ? "Creating…" : `Create ${collection.singularName}`}
               </Button>
             </form>
@@ -325,7 +348,9 @@ export function CollectionItems({ siteId, collection }: CollectionItemsProps) {
         >
           {STATUS_FILTERS.map((s) => (
             <option key={s} value={s}>
-              {s === "ALL" ? "All statuses" : s.charAt(0) + s.slice(1).toLowerCase()}
+              {s === "ALL"
+                ? "All statuses"
+                : s.charAt(0) + s.slice(1).toLowerCase()}
             </option>
           ))}
         </select>
@@ -342,13 +367,28 @@ export function CollectionItems({ siteId, collection }: CollectionItemsProps) {
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-border bg-accent/30 px-3 py-2">
           <span className="text-sm font-medium">{selected.size} selected</span>
           <div className="ml-auto flex gap-1.5">
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => runBulk("publish")}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => runBulk("publish")}
+            >
               Publish
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => runBulk("unpublish")}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => runBulk("unpublish")}
+            >
               Unpublish
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => runBulk("archive")}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => runBulk("archive")}
+            >
               Archive
             </Button>
             <Button
@@ -376,7 +416,11 @@ export function CollectionItems({ siteId, collection }: CollectionItemsProps) {
               : "No items match your filters"}
           </p>
           {items.length === 0 && (
-            <Button size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
+            <Button
+              size="sm"
+              className="mt-4"
+              onClick={() => setShowCreate(true)}
+            >
               <Plus className="mr-1.5 h-4 w-4" />
               New {collection.singularName}
             </Button>

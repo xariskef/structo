@@ -91,6 +91,8 @@ Needs:
 - Add, remove and reorder fields.
 - Create and edit content entries.
 - Publish and unpublish entries.
+- Schedule future publication.
+- Manage excerpts, SEO metadata and bulk editorial actions.
 - Consume site-scoped media after the media milestone.
 - Manage delivery API tokens.
 
@@ -106,6 +108,14 @@ Needs:
 - The initial field catalog includes rich structured fields.
 - Nested groups are supported.
 - Repeaters support add-row, remove-row and reorder-row operations.
+- Categories are hierarchical and tags are flat.
+- Standalone pages share one Pages taxonomy scope.
+- Every collection owns an isolated taxonomy scope so articles, services and
+  other post types do not share terms accidentally.
+- Taxonomy terms include built-in description and SEO metadata.
+- Category and tag definitions support extra structured fields through the same
+  dynamic field engine used for content entries.
+- Content types explicitly enable the taxonomies available to their entries.
 - Categories, tags and navigation menus are added before the first delivery API
   so frontend contracts include the editorial structure from the beginning.
 

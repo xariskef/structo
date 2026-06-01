@@ -37,6 +37,7 @@ interface SiteOverviewProps {
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   PUBLISHED: "default",
   DRAFT: "secondary",
+  SCHEDULED: "secondary",
   ARCHIVED: "outline",
 };
 
@@ -68,11 +69,23 @@ export function SiteOverview({ siteId }: SiteOverviewProps) {
       });
   }, [siteId]);
 
-  const collectionCount = types.filter((t) => t.kind === "COLLECTION").length;
-  const pageCount = types.filter((t) => t.kind === "SINGLE").length;
-  const publishedCount = entries.filter((e) => e.status === "PUBLISHED").length;
-  const draftCount = entries.filter((e) => e.status === "DRAFT").length;
-  const recent = entries.slice(0, 5);
+  const activeTypes = types.filter((type) => type.status !== "ARCHIVED");
+  const activeTypeIds = new Set(activeTypes.map((type) => type.id));
+  const visibleEntries = entries.filter((entry) =>
+    activeTypeIds.has(entry.contentTypeId),
+  );
+  const collectionCount = activeTypes.filter(
+    (t) => t.kind === "COLLECTION",
+  ).length;
+  const pageCount = activeTypes.filter((t) => t.kind === "SINGLE").length;
+  const publishedCount = visibleEntries.filter(
+    (e) => e.status === "PUBLISHED",
+  ).length;
+  const draftCount = visibleEntries.filter((e) => e.status === "DRAFT").length;
+  const scheduledCount = visibleEntries.filter(
+    (e) => e.status === "SCHEDULED",
+  ).length;
+  const recent = visibleEntries.slice(0, 5);
 
   const stats: Array<{
     icon: typeof Layers;
@@ -102,7 +115,7 @@ export function SiteOverview({ siteId }: SiteOverviewProps) {
     {
       icon: PencilLine,
       label: "Items",
-      value: entries.length,
+      value: visibleEntries.length,
       accent: "border-l-[#06163D]",
       iconColor: "text-[#06163D]",
       href: null,
@@ -111,7 +124,7 @@ export function SiteOverview({ siteId }: SiteOverviewProps) {
       icon: Send,
       label: "Published",
       value: publishedCount,
-      sub: `${draftCount} draft${draftCount !== 1 ? "s" : ""}`,
+      sub: `${draftCount} draft${draftCount !== 1 ? "s" : ""}, ${scheduledCount} scheduled`,
       accent: "border-l-emerald-500",
       iconColor: "text-emerald-500",
       href: null,
@@ -166,33 +179,35 @@ export function SiteOverview({ siteId }: SiteOverviewProps) {
 
       {/* Stat cards */}
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map(({ icon: Icon, label, value, sub, accent, iconColor, href }) => {
-          const card = (
-            <Card className={`h-full border-l-4 ${accent}`}>
-              <CardContent className="flex items-center justify-between gap-3 py-5">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {label}
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold tracking-tight">
-                    {value}
-                  </p>
-                  {sub && (
-                    <p className="text-[11px] text-muted-foreground">{sub}</p>
-                  )}
-                </div>
-                <Icon className={`h-7 w-7 shrink-0 ${iconColor}`} />
-              </CardContent>
-            </Card>
-          );
-          return href ? (
-            <Link key={label} href={href} className="block">
-              {card}
-            </Link>
-          ) : (
-            <div key={label}>{card}</div>
-          );
-        })}
+        {stats.map(
+          ({ icon: Icon, label, value, sub, accent, iconColor, href }) => {
+            const card = (
+              <Card className={`h-full border-l-4 ${accent}`}>
+                <CardContent className="flex items-center justify-between gap-3 py-5">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {label}
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold tracking-tight">
+                      {value}
+                    </p>
+                    {sub && (
+                      <p className="text-[11px] text-muted-foreground">{sub}</p>
+                    )}
+                  </div>
+                  <Icon className={`h-7 w-7 shrink-0 ${iconColor}`} />
+                </CardContent>
+              </Card>
+            );
+            return href ? (
+              <Link key={label} href={href} className="block">
+                {card}
+              </Link>
+            ) : (
+              <div key={label}>{card}</div>
+            );
+          },
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

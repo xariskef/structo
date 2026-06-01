@@ -16,6 +16,7 @@
     "@structo/field-kit": "workspace:*",
     "@structo/ui": "workspace:*",
     "@tiptap/extensions": "3.24.0",
+    "@tiptap/pm": "3.24.0",
     "@tiptap/react": "3.24.0",
     "@tiptap/starter-kit": "3.24.0",
     "lucide-react": "1.17.0",

@@ -32,6 +32,7 @@ import { useEffect, useState } from "react";
 
 import { apiRequest } from "../lib/api";
 import { FieldRenderer } from "./entry-field-renderer";
+import { EntryTaxonomies } from "./entry-taxonomies";
 import { StatusBadge } from "./status-badge";
 
 interface EntryEditorProps {
@@ -50,15 +51,18 @@ function labelToSlug(title: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function publicUrl(
-  base: string | null,
-  entry: EntryDetail,
-): string | null {
+function publicUrl(base: string | null, entry: EntryDetail): string | null {
   if (!base) return null;
   const root = base.replace(/\/$/, "");
   return entry.contentTypeKind === "SINGLE"
     ? `${root}/${entry.slug}`
     : `${root}/${entry.contentTypeSlug}/${entry.slug}`;
+}
+
+function toDateTimeLocal(value: Date | string): string {
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
 export function EntryEditor({
@@ -94,6 +98,11 @@ export function EntryEditor({
     setExcerpt(e.excerpt ?? "");
     setSeoTitle(e.seoTitle ?? "");
     setSeoDescription(e.seoDescription ?? "");
+    setScheduleAt(
+      e.status === "SCHEDULED" && e.publishedAt
+        ? toDateTimeLocal(e.publishedAt)
+        : "",
+    );
   }
 
   useEffect(() => {
@@ -130,7 +139,14 @@ export function EntryEditor({
   }
 
   function entryBody() {
-    return JSON.stringify({ title, slug, data, excerpt, seoTitle, seoDescription });
+    return JSON.stringify({
+      title,
+      slug,
+      data,
+      excerpt,
+      seoTitle,
+      seoDescription,
+    });
   }
 
   async function persist(): Promise<EntryDetail> {
@@ -244,7 +260,8 @@ export function EntryEditor({
 
   const fields = entry.fields as FieldDefinition[];
   const isArchived = entry.status === "ARCHIVED";
-  const viewUrl = entry.status === "PUBLISHED" ? publicUrl(publicBaseUrl, entry) : null;
+  const viewUrl =
+    entry.status === "PUBLISHED" ? publicUrl(publicBaseUrl, entry) : null;
 
   return (
     <div>
@@ -397,7 +414,7 @@ export function EntryEditor({
                     {busy === "save" && (
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                     )}
-                    Save draft
+                    {entry.status === "DRAFT" ? "Save draft" : "Save changes"}
                   </Button>
 
                   {entry.status === "PUBLISHED" ? (
@@ -463,6 +480,13 @@ export function EntryEditor({
               )}
             </CardContent>
           </Card>
+
+          <EntryTaxonomies
+            siteId={siteId}
+            entryId={entryId}
+            contentTypeId={entry.contentTypeId}
+            disabled={isArchived}
+          />
 
           {/* SEO card */}
           <Card>

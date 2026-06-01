@@ -4,7 +4,8 @@
 
 The modular monolith scaffold, identity and tenancy, administration UI, site
 settings, custom content types and content entry modules are implemented. Core
-content hardening is in progress before delivery endpoints are added.
+content hardening, the editorial workflow and scoped versioned taxonomies are
+implemented. Navigation menus are next, before delivery endpoints are added.
 
 ## System Shape
 
@@ -105,6 +106,7 @@ apps/api/src/modules/
   settings/
   content-types/
   entries/
+  taxonomies/
 ```
 
 Planned later modules:

@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "../lib/api";
 import { CollectionItems } from "./collection-items";
 import { ContentTypeEditor } from "./content-type-editor";
+import { TaxonomyManager } from "./taxonomy-manager";
 
 interface CollectionViewProps {
   siteId: string;
@@ -98,6 +99,8 @@ export function CollectionView({ siteId, contentTypeId }: CollectionViewProps) {
         <TabsList className="mb-6">
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="structure">Structure</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="tags">Tags</TabsTrigger>
         </TabsList>
 
         <TabsContent value="content">
@@ -109,6 +112,24 @@ export function CollectionView({ siteId, contentTypeId }: CollectionViewProps) {
             siteId={siteId}
             contentTypeId={contentTypeId}
             onContentTypeChange={setCollection}
+          />
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <TaxonomyManager
+            siteId={siteId}
+            contentTypeId={contentTypeId}
+            scope="CONTENT_TYPE"
+            kind="CATEGORY"
+          />
+        </TabsContent>
+
+        <TabsContent value="tags">
+          <TaxonomyManager
+            siteId={siteId}
+            contentTypeId={contentTypeId}
+            scope="CONTENT_TYPE"
+            kind="TAG"
           />
         </TabsContent>
       </Tabs>

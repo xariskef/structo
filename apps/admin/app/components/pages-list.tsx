@@ -17,9 +17,15 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 
 import { apiRequest } from "../lib/api";
+import { StatusBadge } from "./status-badge";
 
 interface PagesListProps {
   siteId: string;
+}
+
+interface BulkResult {
+  affected: number;
+  failed: number;
 }
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
@@ -56,7 +62,11 @@ export function PagesList({ siteId }: PagesListProps) {
   }
 
   useEffect(() => {
-    void load().finally(() => setLoading(false));
+    void load()
+      .catch((e: unknown) =>
+        setError(e instanceof Error ? e.message : "Unable to load pages."),
+      )
+      .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId]);
 
@@ -80,11 +90,19 @@ export function PagesList({ siteId }: PagesListProps) {
     setBusy(true);
     setError(undefined);
     try {
-      await apiRequest(`/manage/sites/${siteId}/content-types/bulk`, {
-        method: "POST",
-        body: JSON.stringify({ action, ids: [...selected] }),
-      });
+      const result = await apiRequest<BulkResult>(
+        `/manage/sites/${siteId}/content-types/bulk`,
+        {
+          method: "POST",
+          body: JSON.stringify({ action, ids: [...selected] }),
+        },
+      );
       await load();
+      if (result.failed > 0) {
+        setError(
+          `${result.affected} page(s) updated. ${result.failed} page(s) could not be updated.`,
+        );
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Bulk action failed.");
     } finally {
@@ -128,7 +146,9 @@ export function PagesList({ siteId }: PagesListProps) {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             Content
           </p>
-          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">Pages</h1>
+          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">
+            Pages
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Standalone pages with their own fields — home, about, contact, and
             other one-off layouts.
@@ -191,7 +211,12 @@ export function PagesList({ siteId }: PagesListProps) {
               {createError && (
                 <p className="text-sm text-destructive">{createError}</p>
               )}
-              <Button type="submit" size="sm" disabled={isCreating} className="w-fit">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isCreating}
+                className="w-fit"
+              >
                 {isCreating ? "Creating…" : "Create and configure"}
               </Button>
             </form>
@@ -210,10 +235,20 @@ export function PagesList({ siteId }: PagesListProps) {
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-border bg-accent/30 px-3 py-2">
           <span className="text-sm font-medium">{selected.size} selected</span>
           <div className="ml-auto flex gap-1.5">
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => runBulk("publish")}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => runBulk("publish")}
+            >
               Publish
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => runBulk("unpublish")}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => runBulk("unpublish")}
+            >
               Unpublish
             </Button>
             <Button
@@ -241,7 +276,11 @@ export function PagesList({ siteId }: PagesListProps) {
           <p className="mt-1 text-xs text-muted-foreground/70">
             Create your first page, such as a home or about page.
           </p>
-          <Button size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
+          <Button
+            size="sm"
+            className="mt-4"
+            onClick={() => setShowCreate(true)}
+          >
             <Plus className="mr-1.5 h-4 w-4" />
             New page
           </Button>
@@ -279,6 +318,9 @@ export function PagesList({ siteId }: PagesListProps) {
               >
                 {page.status}
               </Badge>
+              {page.singleEntryStatus && (
+                <StatusBadge status={page.singleEntryStatus} />
+              )}
             </div>
           ))}
         </div>

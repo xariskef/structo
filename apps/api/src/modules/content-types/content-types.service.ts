@@ -12,6 +12,8 @@ import {
   type ContentTypeKind,
   type ContentTypeSummary,
   type CreateContentTypeInput,
+  type EntryStatus,
+  type TaxonomyKind,
   type UpdateContentTypeInput,
 } from "@structo/contracts";
 import { createField } from "@structo/field-kit";
@@ -42,7 +44,8 @@ type ContentTypeRow = {
   fields: unknown;
   createdAt: Date;
   updatedAt: Date;
-  entries?: { id: string }[];
+  entries?: { id: string; status?: EntryStatus }[];
+  taxonomies?: { taxonomy: TaxonomyKind }[];
   _count?: { entries: number };
 };
 
@@ -74,11 +77,16 @@ export class ContentTypesService {
 
     const owned = await this.db.client.contentType.findMany({
       where: { id: { in: input.ids }, siteId },
-      select: { id: true },
+      select: { id: true, kind: true, status: true },
     });
     if (owned.length !== input.ids.length) {
       throw new BadRequestException(
         "Some content types do not belong to this site.",
+      );
+    }
+    if (owned.some((contentType) => contentType.kind !== "SINGLE")) {
+      throw new BadRequestException(
+        "Bulk page actions only accept single pages.",
       );
     }
 
@@ -89,6 +97,12 @@ export class ContentTypesService {
         if (input.action === "archive") {
           await this.archive(userId, siteId, id);
         } else {
+          const contentType = owned.find((candidate) => candidate.id === id);
+          if (contentType?.status !== "ACTIVE") {
+            throw new BadRequestException(
+              "Only active pages can be published or unpublished.",
+            );
+          }
           const single = await this.entriesService.getOrCreateSingle(
             userId,
             siteId,
@@ -126,10 +140,11 @@ export class ContentTypesService {
       include: {
         _count: { select: { entries: true } },
         entries: {
-          select: { id: true },
+          select: { id: true, status: true },
           orderBy: { createdAt: "asc" },
           take: 1,
         },
+        taxonomies: { select: { taxonomy: true } },
       },
     });
 
@@ -166,6 +181,22 @@ export class ContentTypesService {
               fields: JSON.parse(JSON.stringify(defaultContentFields())),
             },
           });
+
+          if (created.kind === "COLLECTION") {
+            const scopeKey = `content-type:${created.id}`;
+            for (const kind of ["CATEGORY", "TAG"] as const) {
+              await transaction.taxonomyDefinition.create({
+                data: {
+                  siteId,
+                  contentTypeId: created.id,
+                  scope: "CONTENT_TYPE",
+                  scopeKey,
+                  kind,
+                  versions: { create: { version: 1, fields: [] } },
+                },
+              });
+            }
+          }
 
           await transaction.auditLog.create({
             data: {
@@ -217,6 +248,7 @@ export class ContentTypesService {
           orderBy: { createdAt: "asc" },
           take: 1,
         },
+        taxonomies: { select: { taxonomy: true } },
       },
     });
 
@@ -277,6 +309,26 @@ export class ContentTypesService {
               : {}),
           },
         }),
+        ...(input.taxonomies !== undefined
+          ? [
+              this.db.client.contentTypeTaxonomy.deleteMany({
+                where: { contentTypeId },
+              }),
+              this.db.client.contentEntryTaxonomyTerm.deleteMany({
+                where: {
+                  entry: { contentTypeId },
+                  ...(input.taxonomies.length > 0
+                    ? { term: { kind: { notIn: input.taxonomies } } }
+                    : {}),
+                },
+              }),
+              ...input.taxonomies.map((taxonomy) =>
+                this.db.client.contentTypeTaxonomy.create({
+                  data: { siteId, contentTypeId, taxonomy },
+                }),
+              ),
+            ]
+          : []),
         this.db.client.auditLog.create({
           data: {
             organizationId: existing.site.organizationId,
@@ -447,6 +499,8 @@ export class ContentTypesService {
       fieldCount: Array.isArray(row.fields) ? row.fields.length : 0,
       singleEntryId:
         row.kind === "SINGLE" ? (row.entries?.[0]?.id ?? null) : null,
+      singleEntryStatus:
+        row.kind === "SINGLE" ? (row.entries?.[0]?.status ?? null) : null,
       itemCount: row._count?.entries ?? 0,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -473,6 +527,7 @@ export class ContentTypesService {
         : [],
       latestVersion,
       singleEntryId: row.kind === "SINGLE" ? singleEntryId : null,
+      taxonomies: row.taxonomies?.map(({ taxonomy }) => taxonomy) ?? [],
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

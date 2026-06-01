@@ -5,7 +5,11 @@ type Status = "DRAFT" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED";
 
 const CONFIG: Record<
   Status,
-  { label: string; variant: "default" | "secondary" | "outline"; className?: string }
+  {
+    label: string;
+    variant: "default" | "secondary" | "outline";
+    className?: string;
+  }
 > = {
   PUBLISHED: { label: "Published", variant: "default" },
   DRAFT: { label: "Draft", variant: "secondary" },

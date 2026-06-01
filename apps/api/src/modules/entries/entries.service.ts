@@ -218,9 +218,7 @@ export class EntriesService {
     );
 
     if (activeVersion.kind !== "SINGLE") {
-      throw new BadRequestException(
-        "Only single pages expose a single item.",
-      );
+      throw new BadRequestException("Only single pages expose a single item.");
     }
 
     try {
@@ -321,7 +319,15 @@ export class EntriesService {
     const data =
       input.data === undefined
         ? undefined
-        : this.validateData(this.toFields(versionFields), input.data, "draft");
+        : this.validateData(
+            this.toFields(versionFields),
+            this.prepareSchemaMigrationData(
+              this.toFields(versionFields),
+              input.data,
+              latest !== null && latest.id !== existing.contentTypeVersionId,
+            ),
+            "draft",
+          );
 
     try {
       await this.db.client.$transaction([
@@ -405,9 +411,14 @@ export class EntriesService {
       ? latest.fields
       : entry.contentTypeVersion.fields;
 
+    const fields = this.toFields(versionFields);
     const data = this.validateData(
-      this.toFields(versionFields),
-      this.toData(entry.data),
+      fields,
+      this.prepareSchemaMigrationData(
+        fields,
+        this.toData(entry.data),
+        latest !== null && latest.id !== entry.contentTypeVersionId,
+      ),
       "publish",
     );
     const nextRevision = (entry.revisions[0]?.revision ?? 0) + 1;
@@ -631,11 +642,20 @@ export class EntriesService {
 
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
-      include: { site: { select: { organizationId: true } } },
+      include: {
+        site: { select: { organizationId: true } },
+        contentType: { select: { kind: true } },
+      },
     });
 
     if (!entry || entry.siteId !== siteId) {
       throw new NotFoundException("Entry not found.");
+    }
+
+    if (entry.contentType.kind === "SINGLE") {
+      throw new BadRequestException(
+        "Single page content cannot be deleted. Archive the page instead.",
+      );
     }
 
     await this.db.client.$transaction([
@@ -673,9 +693,7 @@ export class EntriesService {
       select: { id: true },
     });
     if (owned.length !== input.entryIds.length) {
-      throw new BadRequestException(
-        "Some entries do not belong to this site.",
-      );
+      throw new BadRequestException("Some entries do not belong to this site.");
     }
 
     let affected = 0;
@@ -741,9 +759,14 @@ export class EntriesService {
     const versionFields = latest
       ? latest.fields
       : entry.contentTypeVersion.fields;
-    this.validateData(
-      this.toFields(versionFields),
-      this.toData(entry.data),
+    const fields = this.toFields(versionFields);
+    const data = this.validateData(
+      fields,
+      this.prepareSchemaMigrationData(
+        fields,
+        this.toData(entry.data),
+        latest !== null && latest.id !== entry.contentTypeVersionId,
+      ),
       "publish",
     );
 
@@ -753,6 +776,7 @@ export class EntriesService {
         data: {
           status: "SCHEDULED",
           publishedAt: when,
+          data: this.toJson(data),
           ...(latest ? { contentTypeVersionId: latest.id } : {}),
           updatedById: userId,
         },
@@ -775,11 +799,68 @@ export class EntriesService {
 
   // Promotes scheduled entries whose time has arrived. Called by the worker.
   async promoteDueScheduled(): Promise<number> {
-    const result = await this.db.client.contentEntry.updateMany({
+    const due = await this.db.client.contentEntry.findMany({
       where: { status: "SCHEDULED", publishedAt: { lte: new Date() } },
-      data: { status: "PUBLISHED" },
+      select: { id: true },
     });
-    return result.count;
+
+    let promoted = 0;
+    for (const { id } of due) {
+      const claimed = await this.db.client.$transaction(async (transaction) => {
+        const result = await transaction.contentEntry.updateMany({
+          where: { id, status: "SCHEDULED", publishedAt: { lte: new Date() } },
+          data: { status: "PUBLISHED" },
+        });
+        if (result.count === 0) {
+          return false;
+        }
+
+        const entry = await transaction.contentEntry.findUnique({
+          where: { id },
+          select: {
+            siteId: true,
+            data: true,
+            site: { select: { organizationId: true } },
+            revisions: {
+              orderBy: { revision: "desc" },
+              take: 1,
+              select: { revision: true },
+            },
+          },
+        });
+        if (!entry) {
+          throw new Error("Scheduled entry disappeared after promotion.");
+        }
+
+        const revision = (entry.revisions[0]?.revision ?? 0) + 1;
+        await transaction.contentRevision.create({
+          data: {
+            entryId: id,
+            revision,
+            data: this.toJson(this.toData(entry.data)),
+            status: "PUBLISHED",
+            createdById: null,
+          },
+        });
+        await transaction.auditLog.create({
+          data: {
+            organizationId: entry.site.organizationId,
+            siteId: entry.siteId,
+            actorId: null,
+            action: "entry.publish_scheduled",
+            entityType: "ContentEntry",
+            entityId: id,
+            metadata: { revision },
+          },
+        });
+        return true;
+      });
+      if (claimed) {
+        promoted += 1;
+      }
+    }
+
+    return promoted;
   }
 
   private async uniqueSlug(
@@ -914,6 +995,55 @@ export class EntriesService {
       : {};
   }
 
+  // When an entry moves onto a newer schema version, removed fields must not
+  // block its next save. Unknown keys still fail validation on normal writes.
+  private prepareSchemaMigrationData(
+    fields: FieldDefinition[],
+    data: Record<string, unknown>,
+    isMigration: boolean,
+  ): Record<string, unknown> {
+    if (!isMigration) {
+      return data;
+    }
+
+    const projected: Record<string, unknown> = {};
+    for (const field of fields) {
+      if (!(field.key in data)) {
+        continue;
+      }
+
+      const value = data[field.key];
+      if (
+        field.type === "group" &&
+        typeof value === "object" &&
+        value !== null &&
+        !Array.isArray(value)
+      ) {
+        projected[field.key] = this.prepareSchemaMigrationData(
+          (field.config as { fields: FieldDefinition[] }).fields,
+          value as Record<string, unknown>,
+          true,
+        );
+      } else if (field.type === "repeater" && Array.isArray(value)) {
+        const nestedFields = (field.config as { fields: FieldDefinition[] })
+          .fields;
+        projected[field.key] = value.map((row) =>
+          typeof row === "object" && row !== null && !Array.isArray(row)
+            ? this.prepareSchemaMigrationData(
+                nestedFields,
+                row as Record<string, unknown>,
+                true,
+              )
+            : row,
+        );
+      } else {
+        projected[field.key] = value;
+      }
+    }
+
+    return projected;
+  }
+
   private toJson(data: Record<string, unknown>) {
     return JSON.parse(JSON.stringify(data));
   }
@@ -967,9 +1097,7 @@ export class EntriesService {
       data: this.toData(entry.data),
       // Prefer the current active schema so newly added fields render in the
       // editor; fall back to the entry's bound version when the type is draft.
-      fields: this.toFields(
-        fieldsOverride ?? entry.contentTypeVersion.fields,
-      ),
+      fields: this.toFields(fieldsOverride ?? entry.contentTypeVersion.fields),
       excerpt: entry.excerpt,
       seoTitle: entry.seoTitle,
       seoDescription: entry.seoDescription,

@@ -35,11 +35,11 @@ test.describe("Collections", () => {
     await page.getByRole("button", { name: "Create and configure" }).click();
 
     await page.waitForURL(/\/collections\/.+/);
-    await expect(
-      page.getByRole("heading", { name: "Articles" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Articles" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Content" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Structure" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Categories" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Tags" })).toBeVisible();
   });
 
   test("builds a structure, activates, and creates an item", async ({
@@ -72,7 +72,9 @@ test.describe("Collections", () => {
 
     // Lands on the item editor
     await page.waitForURL(/\/items\/.+/);
-    await expect(page.getByLabel("Title")).toHaveValue("First Product");
+    await expect(page.getByLabel("Title", { exact: true })).toHaveValue(
+      "First Product",
+    );
   });
 });
 
@@ -103,9 +105,7 @@ test.describe("Pages", () => {
     await expect(page.getByRole("heading", { name: "About" })).toBeVisible();
 
     // Content tab prompts to activate first
-    await expect(
-      page.getByText(/Activate this page/),
-    ).toBeVisible();
+    await expect(page.getByText(/Activate this page/)).toBeVisible();
 
     // Structure tab → add field → activate
     await page.getByRole("tab", { name: "Structure" }).click();
@@ -118,6 +118,6 @@ test.describe("Pages", () => {
 
     // Content tab now resolves the single item editor
     await page.getByRole("tab", { name: "Content" }).click();
-    await expect(page.getByLabel("Title")).toBeVisible();
+    await expect(page.getByLabel("Title", { exact: true })).toBeVisible();
   });
 });

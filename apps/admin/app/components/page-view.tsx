@@ -53,7 +53,9 @@ function PageContent({
     )
       .then((entry) => setEntryId(entry.id))
       .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "Unable to open page content."),
+        setError(
+          e instanceof Error ? e.message : "Unable to open page content.",
+        ),
       )
       .finally(() => setResolving(false));
   }, [siteId, page.id, page.status, entryId]);
@@ -113,7 +115,9 @@ export function PageView({ siteId, contentTypeId }: PageViewProps) {
     )
       .then((nextPage) => {
         if (nextPage.kind !== "SINGLE") {
-          setError("This content type is a collection. Open it from Collections.");
+          setError(
+            "This content type is a collection. Open it from Collections.",
+          );
           return;
         }
         setPage(nextPage);

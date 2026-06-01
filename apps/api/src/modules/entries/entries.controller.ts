@@ -13,17 +13,10 @@ import {
 import {
   bulkEntriesSchema,
   createEntrySchema,
+  entryStatusSchema,
   scheduleEntrySchema,
   updateEntrySchema,
-  type EntryStatus,
 } from "@structo/contracts";
-
-const ENTRY_STATUSES: EntryStatus[] = [
-  "DRAFT",
-  "SCHEDULED",
-  "PUBLISHED",
-  "ARCHIVED",
-];
 
 import { parseInput } from "../../common/validation/parse-input.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
@@ -44,7 +37,8 @@ export class EntriesController {
     @Query("contentTypeId") contentTypeId?: string,
     @Query("status") status?: string,
   ) {
-    const parsedStatus = ENTRY_STATUSES.find((s) => s === status);
+    const parsedStatus =
+      status === undefined ? undefined : parseInput(entryStatusSchema, status);
     return this.entriesService.list(
       user.id,
       siteId,

@@ -7,7 +7,9 @@ import {
   Layers,
   LayoutDashboard,
   LogOut,
+  FolderTree,
   Settings,
+  Tag,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -134,6 +136,14 @@ export function SiteSidebarNav({ siteId }: SiteSidebarNavProps) {
             <NavLink href={`${base}/pages`}>
               <FileText className="h-4 w-4 shrink-0" />
               Pages
+            </NavLink>
+            <NavLink href={`${base}/categories`}>
+              <FolderTree className="h-4 w-4 shrink-0" />
+              Page categories
+            </NavLink>
+            <NavLink href={`${base}/tags`}>
+              <Tag className="h-4 w-4 shrink-0" />
+              Page tags
             </NavLink>
             <NavLink href={`${base}/media`}>
               <ImageIcon className="h-4 w-4 shrink-0" />

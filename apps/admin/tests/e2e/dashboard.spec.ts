@@ -54,6 +54,12 @@ test.describe("Site dashboard", () => {
     await expect(
       page.getByRole("link", { name: "Pages", exact: true }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Page categories", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Page tags", exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole("link", { name: "Media" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Members" })).toBeVisible();
     await expect(
@@ -87,9 +93,7 @@ test.describe("Site dashboard", () => {
 
   test("pages page loads with empty state", async ({ page }) => {
     await page.getByRole("link", { name: "Pages", exact: true }).click();
-    await expect(
-      page.getByRole("heading", { name: "Pages" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pages" })).toBeVisible();
     await expect(
       page.getByRole("button", { name: "New page" }).first(),
     ).toBeVisible();

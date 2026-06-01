@@ -16,14 +16,19 @@ theme and SDK can be added later as separate packages.
 
 ## Project Status
 
-Status: Phase 5.2 collections and pages completed. Phase 5.5 editorial
-structure is next.
+Status: Phase 5.5 editorial structure is in progress. Categories and tags are
+implemented with scoped custom schemas; navigation menus are next.
 
 The repository now includes owner registration, login, server-side sessions,
 organizations, sites, invitations, site settings, repeatable collections,
 standalone pages, versioned dynamic field schemas, content entries, publishing
-and functional organization and site dashboards. Stable dependencies were
-verified from live official sources and the pnpm lockfile is present.
+and functional organization and site dashboards. The site editor includes a
+TipTap HTML editor, SEO metadata, excerpts, scheduled publishing and bulk
+editorial actions. Categories and tags have built-in description and SEO fields,
+support extra structured fields, use a shared Pages scope and isolated
+per-collection scopes, and can be assigned from the entry editor. Stable
+dependencies were verified from live official sources and the pnpm lockfile is
+present.
 
 ## Core Product Areas
 
