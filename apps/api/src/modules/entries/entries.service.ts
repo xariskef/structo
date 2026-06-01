@@ -48,7 +48,7 @@ export class EntriesService {
         status: { not: "ARCHIVED" },
       },
       orderBy: { updatedAt: "desc" },
-      include: { contentType: { select: { name: true } } },
+      include: { contentType: { select: { name: true, kind: true } } },
     });
 
     return rows.map((entry) => ({
@@ -56,6 +56,7 @@ export class EntriesService {
       siteId: entry.siteId,
       contentTypeId: entry.contentTypeId,
       contentTypeName: entry.contentType.name,
+      contentTypeKind: entry.contentType.kind,
       title: entry.title,
       slug: entry.slug,
       status: entry.status,
@@ -81,65 +82,79 @@ export class EntriesService {
       siteId,
     );
 
-    // A single page holds exactly one item.
-    if (activeVersion.kind === "SINGLE") {
-      const existingCount = await this.db.client.contentEntry.count({
-        where: { contentTypeId: input.contentTypeId },
-      });
-      if (existingCount > 0) {
-        throw new ConflictException(
-          "This page already has content. A single page holds exactly one item.",
-        );
-      }
-    }
-
     const fields = this.toFields(activeVersion.fields);
     const data = this.validateData(fields, input.data, "draft");
 
     try {
-      const entry = await this.db.client.$transaction(async (transaction) => {
-        const created = await transaction.contentEntry.create({
-          data: {
-            siteId,
-            contentTypeId: input.contentTypeId,
-            contentTypeVersionId: activeVersion.id,
-            title: input.title,
-            slug: input.slug,
-            data: this.toJson(data),
-            createdById: userId,
-            updatedById: userId,
-          },
-          include: {
-            contentType: { select: { name: true } },
-            contentTypeVersion: { select: { fields: true } },
-            revisions: {
-              orderBy: { revision: "desc" },
-              take: 1,
-              select: { revision: true },
-            },
-          },
-        });
+      const entry = await this.db.client.$transaction(
+        async (transaction) => {
+          // Serialize writes for a single page so concurrent first opens cannot
+          // create two backing items with different slugs.
+          if (activeVersion.kind === "SINGLE") {
+            const existingCount = await transaction.contentEntry.count({
+              where: { contentTypeId: input.contentTypeId },
+            });
+            if (existingCount > 0) {
+              throw new ConflictException(
+                "This page already has content. A single page holds exactly one item.",
+              );
+            }
+          }
 
-        await transaction.auditLog.create({
-          data: {
-            organizationId: activeVersion.organizationId,
-            siteId,
-            actorId: userId,
-            action: "entry.create",
-            entityType: "ContentEntry",
-            entityId: created.id,
-            metadata: {
-              title: created.title,
-              contentTypeId: created.contentTypeId,
+          const created = await transaction.contentEntry.create({
+            data: {
+              siteId,
+              contentTypeId: input.contentTypeId,
+              contentTypeVersionId: activeVersion.id,
+              title: input.title,
+              slug: input.slug,
+              data: this.toJson(data),
+              createdById: userId,
+              updatedById: userId,
             },
-          },
-        });
+            include: {
+              contentType: { select: { name: true, kind: true } },
+              contentTypeVersion: { select: { fields: true } },
+              revisions: {
+                orderBy: { revision: "desc" },
+                take: 1,
+                select: { revision: true },
+              },
+            },
+          });
 
-        return created;
-      });
+          await transaction.auditLog.create({
+            data: {
+              organizationId: activeVersion.organizationId,
+              siteId,
+              actorId: userId,
+              action: "entry.create",
+              entityType: "ContentEntry",
+              entityId: created.id,
+              metadata: {
+                title: created.title,
+                contentTypeId: created.contentTypeId,
+              },
+            },
+          });
+
+          return created;
+        },
+        activeVersion.kind === "SINGLE"
+          ? { isolationLevel: "Serializable" }
+          : undefined,
+      );
 
       return this.toDetail(entry, null);
     } catch (error: unknown) {
+      if (
+        activeVersion.kind === "SINGLE" &&
+        this.isTransactionWriteConflict(error)
+      ) {
+        throw new ConflictException(
+          "This page already has content. A single page holds exactly one item.",
+        );
+      }
       if (
         error instanceof Error &&
         error.message.includes("Unique constraint")
@@ -164,6 +179,19 @@ export class EntriesService {
       siteId,
       "site.view",
     );
+
+    const contentType = await this.db.client.contentType.findFirst({
+      where: { id: contentTypeId, siteId },
+      select: { kind: true },
+    });
+
+    if (!contentType) {
+      throw new NotFoundException("Content type not found.");
+    }
+
+    if (contentType.kind !== "SINGLE") {
+      throw new BadRequestException("Only single pages expose a single item.");
+    }
 
     const existing = await this.db.client.contentEntry.findFirst({
       where: { contentTypeId, siteId },
@@ -224,7 +252,7 @@ export class EntriesService {
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
       include: {
-        contentType: { select: { name: true } },
+        contentType: { select: { name: true, kind: true } },
         contentTypeVersion: { select: { fields: true } },
         revisions: {
           orderBy: { revision: "desc" },
@@ -401,7 +429,10 @@ export class EntriesService {
 
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
-      include: { site: { select: { organizationId: true } } },
+      include: {
+        site: { select: { organizationId: true } },
+        contentType: { select: { kind: true } },
+      },
     });
 
     if (!entry || entry.siteId !== siteId) {
@@ -447,7 +478,10 @@ export class EntriesService {
 
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
-      include: { site: { select: { organizationId: true } } },
+      include: {
+        site: { select: { organizationId: true } },
+        contentType: { select: { kind: true } },
+      },
     });
 
     if (!entry || entry.siteId !== siteId) {
@@ -456,6 +490,12 @@ export class EntriesService {
 
     if (entry.status === "ARCHIVED") {
       return this.get(userId, siteId, entryId);
+    }
+
+    if (entry.contentType.kind === "SINGLE") {
+      throw new BadRequestException(
+        "Single page content cannot be archived. Archive the page instead.",
+      );
     }
 
     await this.db.client.$transaction([
@@ -574,6 +614,15 @@ export class EntriesService {
     return JSON.parse(JSON.stringify(data));
   }
 
+  private isTransactionWriteConflict(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2034"
+    );
+  }
+
   private toDetail(
     entry: {
       id: string;
@@ -587,7 +636,7 @@ export class EntriesService {
       publishedAt: Date | null;
       createdAt: Date;
       updatedAt: Date;
-      contentType: { name: string };
+      contentType: { name: string; kind: "COLLECTION" | "SINGLE" };
       contentTypeVersion: { fields: unknown };
     },
     latestRevision: number | null,
@@ -598,6 +647,7 @@ export class EntriesService {
       contentTypeId: entry.contentTypeId,
       contentTypeVersionId: entry.contentTypeVersionId,
       contentTypeName: entry.contentType.name,
+      contentTypeKind: entry.contentType.kind,
       title: entry.title,
       slug: entry.slug,
       status: entry.status,

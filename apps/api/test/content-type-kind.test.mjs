@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  activatableContentTypeFieldsSchema,
   contentTypeKindSchema,
   createContentTypeSchema,
 } from "@structo/contracts";
+import { createField } from "@structo/field-kit";
 
 describe("content type kind", () => {
   it("accepts COLLECTION and SINGLE", () => {
@@ -42,5 +44,18 @@ describe("content type kind", () => {
     });
     assert.ok(result.success, JSON.stringify(result.error));
     assert.equal(result.data.kind, "SINGLE");
+  });
+});
+
+describe("default seeded content field", () => {
+  it("creates a richText 'content' field that is activatable", () => {
+    const field = createField("richText", "Content", "content");
+    assert.equal(field.type, "richText");
+    assert.equal(field.key, "content");
+
+    // The auto-seeded body must satisfy the activation schema so a brand-new
+    // content type can be activated immediately.
+    const result = activatableContentTypeFieldsSchema.safeParse([field]);
+    assert.ok(result.success, JSON.stringify(result.error));
   });
 });

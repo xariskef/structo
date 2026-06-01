@@ -96,8 +96,11 @@ Needs:
 
 ### Content Modeling
 
-- Content types are site-scoped custom post types. A site can define flexible
-  collections such as pages, articles, services, products or events.
+- Content types are site-scoped custom post types with two explicit kinds.
+- `COLLECTION` types hold repeatable items such as articles, services, products
+  or events.
+- `SINGLE` types represent standalone pages such as home, about or contact and
+  hold exactly one backing item.
 - Content schemas are versioned.
 - Entry values are validated server-side.
 - The initial field catalog includes rich structured fields.

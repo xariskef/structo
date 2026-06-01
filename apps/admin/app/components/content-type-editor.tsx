@@ -21,6 +21,7 @@ import {
 } from "@structo/field-kit";
 import type { FieldDefinition, FieldType } from "@structo/field-kit";
 import {
+  Archive,
   ArrowDown,
   ArrowUp,
   CheckCircle2,
@@ -442,16 +443,21 @@ export function ContentTypeEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState<string>();
   const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     void apiRequest<ContentTypeDetail>(
       `/manage/sites/${siteId}/content-types/${contentTypeId}`,
-    ).then((data) => {
-      setCt(data);
-      setFields(data.fields);
-    });
+    )
+      .then((data) => {
+        setCt(data);
+        setFields(data.fields);
+      })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Unable to load structure.");
+      });
   }, [siteId, contentTypeId]);
 
   async function saveFields(): Promise<boolean> {
@@ -497,6 +503,23 @@ export function ContentTypeEditor({
     }
   }
 
+  async function archiveContentType() {
+    setIsArchiving(true);
+    setError(undefined);
+    try {
+      const updated = await apiRequest<ContentTypeDetail>(
+        `/manage/sites/${siteId}/content-types/${contentTypeId}/archive`,
+        { method: "POST" },
+      );
+      setCt(updated);
+      onContentTypeChange?.(updated);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unable to archive.");
+    } finally {
+      setIsArchiving(false);
+    }
+  }
+
   function addField(type: FieldType) {
     const label = FIELD_TYPE_META[type].label;
     const key = labelToKey(label);
@@ -523,6 +546,10 @@ export function ContentTypeEditor({
   }
 
   if (!ct) {
+    if (error) {
+      return <p className="text-sm text-destructive">{error}</p>;
+    }
+
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -565,6 +592,15 @@ export function ContentTypeEditor({
                   {isActivating ? "Activating…" : "Activate"}
                 </Button>
               ) : null}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={archiveContentType}
+                disabled={isArchiving}
+              >
+                <Archive className="mr-1.5 h-3.5 w-3.5" />
+                {isArchiving ? "Archiving..." : "Archive"}
+              </Button>
             </>
           )}
         </div>
@@ -586,6 +622,12 @@ export function ContentTypeEditor({
       {/* Description */}
       {ct.description && (
         <p className="mb-6 text-sm text-muted-foreground">{ct.description}</p>
+      )}
+
+      {ct.status === "ARCHIVED" && (
+        <p className="mb-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+          This content type is archived. Its structure is read-only.
+        </p>
       )}
 
       {/* Fields section */}
@@ -624,28 +666,45 @@ export function ContentTypeEditor({
           <p className="mt-1 text-xs text-muted-foreground/70">
             Add your first field to define this content type.
           </p>
-          <Button
-            type="button"
-            size="sm"
-            className="mt-3"
-            onClick={() => setShowPicker(true)}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add field
-          </Button>
+          {ct.status !== "ARCHIVED" && (
+            <Button
+              type="button"
+              size="sm"
+              className="mt-3"
+              onClick={() => setShowPicker(true)}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add field
+            </Button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           {fields.map((field, i) => (
-            <FieldRow
-              key={field.id}
-              field={field}
-              index={i}
-              total={fields.length}
-              onUpdate={(updated) => updateField(i, updated)}
-              onDelete={() => deleteField(i)}
-              onMove={(dir) => moveField(i, dir)}
-            />
+            ct.status === "ARCHIVED" ? (
+              <div
+                key={field.id}
+                className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5"
+              >
+                <span className="truncate text-sm font-medium">{field.label}</span>
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                  {field.key}
+                </span>
+                <Badge variant="outline" className="shrink-0 py-0 text-[10px]">
+                  {FIELD_TYPE_META[field.type]?.label ?? field.type}
+                </Badge>
+              </div>
+            ) : (
+              <FieldRow
+                key={field.id}
+                field={field}
+                index={i}
+                total={fields.length}
+                onUpdate={(updated) => updateField(i, updated)}
+                onDelete={() => deleteField(i)}
+                onMove={(dir) => moveField(i, dir)}
+              />
+            )
           ))}
         </div>
       )}

@@ -1,6 +1,8 @@
 import type { FieldDefinition } from "@structo/field-kit";
 import { z } from "zod";
 
+import type { ContentTypeKind } from "./content-types.js";
+
 const entrySlugSchema = z
   .string()
   .min(1)
@@ -33,6 +35,7 @@ export interface EntrySummary {
   siteId: string;
   contentTypeId: string;
   contentTypeName: string;
+  contentTypeKind: ContentTypeKind;
   title: string;
   slug: string;
   status: EntryStatus;

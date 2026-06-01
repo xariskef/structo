@@ -13,10 +13,17 @@ import {
   type CreateContentTypeInput,
   type UpdateContentTypeInput,
 } from "@structo/contracts";
+import { createField } from "@structo/field-kit";
 import type { FieldDefinition } from "@structo/field-kit";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { DatabaseService } from "../database/database.service.js";
+
+// Every new content type starts with a built-in rich-text body, like the
+// default WordPress editor. It can be removed from the Structure tab.
+function defaultContentFields(): FieldDefinition[] {
+  return [createField("richText", "Content", "content")];
+}
 
 // Shape returned by the queries below: a content type row plus the relation
 // data needed to build summaries and details.
@@ -100,7 +107,7 @@ export class ContentTypesService {
               pluralName,
               slug: input.slug,
               description: input.description ?? null,
-              fields: [],
+              fields: JSON.parse(JSON.stringify(defaultContentFields())),
             },
           });
 

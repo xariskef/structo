@@ -11,10 +11,9 @@ builders or other advanced presentation features are considered.
 ## Custom Post Types
 
 Structo keeps the useful custom post-type model from the reference project.
-Each site can create collections such as:
+Each site can create repeatable collections such as:
 
 ```text
-pages
 posts
 articles
 services
@@ -22,9 +21,21 @@ products
 events
 ```
 
-These are all `ContentType` records. Their individual items are
-`ContentEntry` records. New editorial collections do not require new database
-tables or application code.
+It can also create standalone pages such as:
+
+```text
+home
+about
+contact
+```
+
+These are all `ContentType` records. A `COLLECTION` holds many `ContentEntry`
+records. A `SINGLE` page is backed by exactly one `ContentEntry`. Both kinds use
+the same schema builder, validation and revision system. New editorial
+collections or pages do not require new database tables or application code.
+
+A single page is archived as a content type. Its backing item is not archived
+independently.
 
 ## Storage Strategy
 

@@ -84,6 +84,14 @@ export function CollectionItems({ siteId, collection }: CollectionItemsProps) {
     }
   }
 
+  if (collection.status === "ARCHIVED") {
+    return (
+      <div className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
+        This collection is archived. Its items are no longer editable.
+      </div>
+    );
+  }
+
   if (!isActive) {
     return (
       <div className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">

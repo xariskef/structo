@@ -388,6 +388,9 @@ collecting visitor data.
 - Every site-scoped query checks access to the requested site.
 - Slugs are unique within the smallest meaningful tenant scope.
 - Content entries are validated against the stored content type version.
+- A `SINGLE` content type has exactly one backing item after first access.
+- Single-page first creation is serialized in the service layer and its backing
+  item is archived only through the parent content type.
 - Incomplete entry drafts are allowed while editing.
 - Publishing requires strict validation against the referenced immutable
   content type version.

@@ -58,6 +58,14 @@ function PageContent({
       .finally(() => setResolving(false));
   }, [siteId, page.id, page.status, entryId]);
 
+  if (page.status === "ARCHIVED") {
+    return (
+      <div className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
+        This page is archived. Its content is no longer editable.
+      </div>
+    );
+  }
+
   if (page.status !== "ACTIVE") {
     return (
       <div className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
@@ -85,7 +93,14 @@ function PageContent({
     );
   }
 
-  return <EntryEditor siteId={siteId} entryId={entryId} />;
+  return (
+    <EntryEditor
+      siteId={siteId}
+      entryId={entryId}
+      expectedContentTypeId={page.id}
+      allowArchive={false}
+    />
+  );
 }
 
 export function PageView({ siteId, contentTypeId }: PageViewProps) {
@@ -96,7 +111,13 @@ export function PageView({ siteId, contentTypeId }: PageViewProps) {
     void apiRequest<ContentTypeDetail>(
       `/manage/sites/${siteId}/content-types/${contentTypeId}`,
     )
-      .then(setPage)
+      .then((nextPage) => {
+        if (nextPage.kind !== "SINGLE") {
+          setError("This content type is a collection. Open it from Collections.");
+          return;
+        }
+        setPage(nextPage);
+      })
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : "Unable to load page."),
       );

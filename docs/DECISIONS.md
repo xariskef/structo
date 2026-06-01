@@ -120,9 +120,13 @@ becomes necessary. Ajv is not required for the current runtime path.
 
 ### D-106: Rich Text
 
-Status: proposed.
+Status: accepted.
 
-Use TipTap JSON for rich text storage.
+Use a TipTap editor for `richText` fields, storing the result as **HTML** in the
+entry's JSON data. HTML is directly consumable by any frontend through the
+future delivery API and matches the reference project. TipTap JSON storage is
+deferred and can be added later if structured querying or server-side
+transformation of rich text becomes necessary.
 
 ### D-107: Media Storage
 
@@ -218,7 +222,7 @@ Add categories, tags and navigation menus before the first delivery API. These
 entities shape the frontend delivery contract and should not be retrofitted
 after external frontends begin consuming content.
 
-### D-113: Collections And Pages
+### D-115: Collections And Pages
 
 Status: accepted.
 
@@ -232,7 +236,9 @@ Content types carry a `kind`:
 Both kinds share the same `ContentType` + `ContentTypeVersion` + `ContentEntry`
 storage and the same dynamic field system. The distinction is enforced in the
 service layer (a single page rejects a second item) and surfaced in the
-administration UI as two areas: Collections and Pages.
+administration UI as two areas: Collections and Pages. First creation is
+serialized, and a single page is archived at content-type level rather than by
+archiving its backing item independently.
 
 Content types also carry `singularName` and `pluralName` so the UI can use
 natural labels ("New Article") instead of the technical word "entry".

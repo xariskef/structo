@@ -63,6 +63,7 @@ Initial route groups:
 /sites/:siteId/content-types/:contentTypeId
 /sites/:siteId/content-types/:contentTypeId/activate
 /sites/:siteId/content-types/:contentTypeId/archive
+/sites/:siteId/content-types/:contentTypeId/single
 /sites/:siteId/entries
 /sites/:siteId/entries/:entryId
 /sites/:siteId/entries/:entryId/publish
@@ -89,8 +90,10 @@ Implemented management foundation:
 - Invitation creation and acceptance use one-time raw tokens whose hashes are
   persisted.
 - Site settings are validated and site-scoped.
-- Content types provide generic custom post-type collections with versioned
-  field schemas.
+- Content types provide repeatable `COLLECTION` types and standalone `SINGLE`
+  pages with versioned field schemas.
+- `POST /manage/sites/:siteId/content-types/:contentTypeId/single` resolves or
+  creates the one backing item for a `SINGLE` page and rejects collections.
 - Entries support incomplete drafts, strict publishing, unpublishing, archival
   and revision summaries.
 

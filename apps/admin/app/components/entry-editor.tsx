@@ -28,6 +28,8 @@ interface EntryEditorProps {
   // pages, where the page view already provides context.
   backHref?: string;
   backLabel?: string;
+  expectedContentTypeId?: string;
+  allowArchive?: boolean;
 }
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
@@ -48,6 +50,8 @@ export function EntryEditor({
   entryId,
   backHref,
   backLabel,
+  expectedContentTypeId,
+  allowArchive = true,
 }: EntryEditorProps) {
   const [entry, setEntry] = useState<EntryDetail | null>(null);
   const [data, setData] = useState<Record<string, unknown>>({});
@@ -65,19 +69,31 @@ export function EntryEditor({
   useEffect(() => {
     void apiRequest<EntryDetail>(
       `/manage/sites/${siteId}/entries/${entryId}`,
-    ).then(async (e) => {
-      setEntry(e);
-      setTitle(e.title);
-      setSlug(e.slug);
-      setData(e.data);
+    )
+      .then(async (e) => {
+        if (
+          expectedContentTypeId !== undefined &&
+          e.contentTypeId !== expectedContentTypeId
+        ) {
+          setError("This item does not belong to the selected collection.");
+          return;
+        }
+        setError(undefined);
+        setEntry(e);
+        setTitle(e.title);
+        setSlug(e.slug);
+        setData(e.data);
 
-      // Load revisions
-      const revs = await apiRequest<RevisionSummary[]>(
-        `/manage/sites/${siteId}/entries/${entryId}/revisions`,
-      );
-      setRevisions(revs);
-    });
-  }, [siteId, entryId]);
+        // Load revisions
+        const revs = await apiRequest<RevisionSummary[]>(
+          `/manage/sites/${siteId}/entries/${entryId}/revisions`,
+        );
+        setRevisions(revs);
+      })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Unable to load content.");
+      });
+  }, [siteId, entryId, expectedContentTypeId]);
 
   function handleTitleChange(newTitle: string) {
     setTitle(newTitle);
@@ -164,6 +180,10 @@ export function EntryEditor({
     }
   }
 
+  if (error && !entry) {
+    return <p className="text-sm text-destructive">{error}</p>;
+  }
+
   if (!entry) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -239,15 +259,17 @@ export function EntryEditor({
                 {isPublishing ? "Publishing…" : "Publish"}
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={archive}
-              disabled={isArchiving}
-            >
-              <Archive className="mr-1.5 h-3.5 w-3.5" />
-              {isArchiving ? "Archiving..." : "Archive"}
-            </Button>
+            {allowArchive && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={archive}
+                disabled={isArchiving}
+              >
+                <Archive className="mr-1.5 h-3.5 w-3.5" />
+                {isArchiving ? "Archiving..." : "Archive"}
+              </Button>
+            )}
           </div>
         )}
       </div>

@@ -16,14 +16,14 @@ theme and SDK can be added later as separate packages.
 
 ## Project Status
 
-Status: Phase 5.1 core content hardening completed. Phase 5.5 editorial
+Status: Phase 5.2 collections and pages completed. Phase 5.5 editorial
 structure is next.
 
 The repository now includes owner registration, login, server-side sessions,
-organizations, sites, invitations, site settings, generic custom post types,
-versioned dynamic field schemas, content entries, publishing and functional
-organization and site dashboards. Stable dependencies were verified from live
-official sources and the pnpm lockfile is present.
+organizations, sites, invitations, site settings, repeatable collections,
+standalone pages, versioned dynamic field schemas, content entries, publishing
+and functional organization and site dashboards. Stable dependencies were
+verified from live official sources and the pnpm lockfile is present.
 
 ## Core Product Areas
 

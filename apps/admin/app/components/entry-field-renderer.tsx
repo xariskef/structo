@@ -8,6 +8,8 @@ import type { FieldDefinition } from "@structo/field-kit";
 import { isNestedField } from "@structo/field-kit";
 import { Plus, Trash2 } from "lucide-react";
 
+import { RichTextEditor } from "./rich-text-editor";
+
 interface FieldRendererProps {
   field: FieldDefinition;
   value: unknown;
@@ -65,12 +67,10 @@ export function FieldRenderer({
     case "richText":
       return (
         <FieldWrap field={field}>
-          <Textarea
+          <RichTextEditor
             value={str}
-            onChange={(e) => onChange(e.currentTarget.value)}
+            onChange={(html) => onChange(html)}
             disabled={disabled}
-            rows={6}
-            placeholder="Rich text (plain text editor — Tiptap coming in a later milestone)"
           />
         </FieldWrap>
       );

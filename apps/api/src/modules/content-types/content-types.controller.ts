@@ -35,7 +35,7 @@ export class ContentTypesController {
     @Query("kind") kind?: string,
   ) {
     const parsedKind: ContentTypeKind | undefined =
-      kind === undefined ? undefined : contentTypeKindSchema.parse(kind);
+      kind === undefined ? undefined : parseInput(contentTypeKindSchema, kind);
     return this.contentTypesService.list(user.id, siteId, parsedKind);
   }
 

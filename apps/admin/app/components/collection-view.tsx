@@ -35,7 +35,13 @@ export function CollectionView({ siteId, contentTypeId }: CollectionViewProps) {
     void apiRequest<ContentTypeDetail>(
       `/manage/sites/${siteId}/content-types/${contentTypeId}`,
     )
-      .then(setCollection)
+      .then((nextCollection) => {
+        if (nextCollection.kind !== "COLLECTION") {
+          setError("This content type is a page. Open it from Pages.");
+          return;
+        }
+        setCollection(nextCollection);
+      })
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : "Unable to load collection."),
       );

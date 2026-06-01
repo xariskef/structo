@@ -14,7 +14,7 @@ test.describe("Collections", () => {
   test.beforeEach(async ({ page, orgId }) => {
     void orgId;
     await createAndOpenSite(page);
-    await page.getByRole("link", { name: "Collections" }).click();
+    await page.getByRole("link", { name: "Collections", exact: true }).click();
     await page.waitForURL(/\/collections$/);
   });
 
@@ -59,7 +59,9 @@ test.describe("Collections", () => {
     await page.getByRole("button", { name: /Short plain text/ }).click();
     await expect(page.getByText("Fields (1)")).toBeVisible();
     await page.getByRole("button", { name: "Activate" }).click();
-    await expect(page.getByText("ACTIVE").first()).toBeVisible();
+    await expect(page.getByText("Published structure: v1")).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Content tab → create a new Product
     await page.getByRole("tab", { name: "Content" }).click();
@@ -78,7 +80,7 @@ test.describe("Pages", () => {
   test.beforeEach(async ({ page, orgId }) => {
     void orgId;
     await createAndOpenSite(page);
-    await page.getByRole("link", { name: "Pages" }).click();
+    await page.getByRole("link", { name: "Pages", exact: true }).click();
     await page.waitForURL(/\/pages$/);
   });
 
@@ -110,7 +112,9 @@ test.describe("Pages", () => {
     await page.getByRole("button", { name: "Add field" }).first().click();
     await page.getByRole("button", { name: /Short plain text/ }).click();
     await page.getByRole("button", { name: "Activate" }).click();
-    await expect(page.getByText("ACTIVE").first()).toBeVisible();
+    await expect(page.getByText("Published structure: v1")).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Content tab now resolves the single item editor
     await page.getByRole("tab", { name: "Content" }).click();

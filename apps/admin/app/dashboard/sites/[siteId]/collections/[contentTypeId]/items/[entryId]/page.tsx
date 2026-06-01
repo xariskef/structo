@@ -14,6 +14,7 @@ export default async function CollectionItemPage({
       <EntryEditor
         siteId={siteId}
         entryId={entryId}
+        expectedContentTypeId={contentTypeId}
         backHref={`/dashboard/sites/${siteId}/collections/${contentTypeId}`}
       />
     </div>

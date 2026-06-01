@@ -49,12 +49,16 @@ test.describe("Site dashboard", () => {
     await expect(sidebar).toContainText("Content");
     await expect(sidebar).toContainText("Administration");
     await expect(
-      page.getByRole("link", { name: "Collections" }),
+      page.getByRole("link", { name: "Collections", exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Pages" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Pages", exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole("link", { name: "Media" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Members" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Settings", exact: true }),
+    ).toBeVisible();
   });
 
   test("back to org link appears in site sidebar", async ({ page }) => {
@@ -62,7 +66,7 @@ test.describe("Site dashboard", () => {
   });
 
   test("settings page loads and saves", async ({ page }) => {
-    await page.getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Site settings" }),
     ).toBeVisible();
@@ -72,7 +76,7 @@ test.describe("Site dashboard", () => {
   });
 
   test("collections page loads with empty state", async ({ page }) => {
-    await page.getByRole("link", { name: "Collections" }).click();
+    await page.getByRole("link", { name: "Collections", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Collections" }),
     ).toBeVisible();
@@ -82,7 +86,7 @@ test.describe("Site dashboard", () => {
   });
 
   test("pages page loads with empty state", async ({ page }) => {
-    await page.getByRole("link", { name: "Pages" }).click();
+    await page.getByRole("link", { name: "Pages", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Pages" }),
     ).toBeVisible();

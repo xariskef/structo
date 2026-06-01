@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ConflictException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
 
 import { EntriesService } from "../dist/modules/entries/entries.service.js";
 
@@ -10,7 +10,11 @@ function authorization() {
 }
 
 function singleContentTypeClient(entryCount) {
+  let isolationLevel;
   return {
+    get isolationLevel() {
+      return isolationLevel;
+    },
     contentType: {
       findFirst() {
         return {
@@ -23,17 +27,50 @@ function singleContentTypeClient(entryCount) {
         };
       },
     },
-    contentEntry: {
-      count() {
-        return entryCount;
-      },
+    $transaction(callback, options) {
+      isolationLevel = options?.isolationLevel;
+      return callback({
+        contentEntry: {
+          count() {
+            return entryCount;
+          },
+          create() {
+            throw new Error("Unexpected entry creation.");
+          },
+        },
+        auditLog: {
+          create() {
+            throw new Error("Unexpected audit log creation.");
+          },
+        },
+      });
     },
   };
 }
 
-test("single pages reject a second item", async () => {
+function entryDetail() {
+  return {
+    id: "entry-1",
+    siteId: "site-a",
+    contentTypeId: "ct-single",
+    contentTypeVersionId: "ver-1",
+    title: "About",
+    slug: "about",
+    status: "DRAFT",
+    data: {},
+    publishedAt: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    contentType: { name: "About" },
+    contentTypeVersion: { fields: [] },
+    revisions: [],
+  };
+}
+
+test("single pages serialize item creation before rejecting a second item", async () => {
+  const client = singleContentTypeClient(1);
   const service = new EntriesService(
-    { client: singleContentTypeClient(1) },
+    { client },
     authorization(),
   );
 
@@ -46,32 +83,49 @@ test("single pages reject a second item", async () => {
     }),
     (error) => error instanceof ConflictException,
   );
+
+  assert.equal(client.isolationLevel, "Serializable");
+});
+
+test("getOrCreateSingle rejects collections before returning an existing item", async () => {
+  let lookedForEntry = false;
+  const client = {
+    contentType: {
+      findFirst() {
+        return { kind: "COLLECTION" };
+      },
+    },
+    contentEntry: {
+      findFirst() {
+        lookedForEntry = true;
+        return { id: "entry-1" };
+      },
+    },
+  };
+  const service = new EntriesService({ client }, authorization());
+
+  await assert.rejects(
+    service.getOrCreateSingle("user-a", "site-a", "ct-collection"),
+    (error) => error instanceof BadRequestException,
+  );
+
+  assert.equal(lookedForEntry, false);
 });
 
 test("getOrCreateSingle returns the existing item without creating another", async () => {
   let created = false;
   const client = {
+    contentType: {
+      findFirst() {
+        return { kind: "SINGLE" };
+      },
+    },
     contentEntry: {
       findFirst() {
         return { id: "entry-1" };
       },
       findUnique() {
-        return {
-          id: "entry-1",
-          siteId: "site-a",
-          contentTypeId: "ct-single",
-          contentTypeVersionId: "ver-1",
-          title: "About",
-          slug: "about",
-          status: "DRAFT",
-          data: {},
-          publishedAt: null,
-          createdAt: new Date(0),
-          updatedAt: new Date(0),
-          contentType: { name: "About" },
-          contentTypeVersion: { fields: [] },
-          revisions: [],
-        };
+        return entryDetail();
       },
       create() {
         created = true;
@@ -89,4 +143,24 @@ test("getOrCreateSingle returns the existing item without creating another", asy
 
   assert.equal(result.id, "entry-1");
   assert.equal(created, false);
+});
+
+test("single page content is archived with its page, not as an entry", async () => {
+  const client = {
+    contentEntry: {
+      findUnique() {
+        return {
+          ...entryDetail(),
+          contentType: { kind: "SINGLE" },
+          site: { organizationId: "org-a" },
+        };
+      },
+    },
+  };
+  const service = new EntriesService({ client }, authorization());
+
+  await assert.rejects(
+    service.archive("user-a", "site-a", "entry-1"),
+    (error) => error instanceof BadRequestException,
+  );
 });
