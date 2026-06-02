@@ -54,6 +54,7 @@ Initial route groups:
 /organizations/:organizationId/members
 /organizations/:organizationId/sites
 /organizations/:organizationId/invitations
+/organizations/:organizationId/audit-logs
 /sites
 /sites/:siteId
 /sites/:siteId/members
@@ -86,9 +87,35 @@ Initial route groups:
 /sites/:siteId/api-tokens
 /sites/:siteId/media
 /sites/:siteId/media/:assetId
+/sites/:siteId/storage
+/sites/:siteId/preview-tokens
 /sites/:siteId/audit-logs
 /invitations/accept
 ```
+
+Site storage routes (`site.manage_settings` permission required):
+
+```text
+GET    /manage/sites/:siteId/storage   — return status (secretSet bool, never the key)
+PUT    /manage/sites/:siteId/storage   — save + validate credentials; omitting
+                                         secretAccessKey reuses the stored one
+DELETE /manage/sites/:siteId/storage   — clear per-site config, revert to fallback
+```
+
+Preview routes:
+
+```text
+GET    /manage/sites/:siteId/preview-tokens            — list token summaries
+POST   /manage/sites/:siteId/preview-tokens            — reveal raw token and
+                                                         frontend Draft Mode URL once
+DELETE /manage/sites/:siteId/preview-tokens/:tokenId   — revoke token
+GET    /preview/session                                — validate bearer token scope
+GET    /preview/entries/:entryId                       — return live draft content
+```
+
+Preview delivery routes require an `stp_` bearer token. They never accept raw
+tokens in CMS query strings. Tokens are site-scoped and may optionally narrow
+access to one entry.
 
 Management routes require an authenticated user session and authorization for
 the requested organization or site.
@@ -136,6 +163,21 @@ Implemented management foundation:
 - Media list, multipart upload, metadata update and deletion routes remain
   site-scoped. Uploads create object keys server-side, validate file signatures
   and store metadata before assets can be selected by dynamic fields.
+- Audit-log listings are read-only, newest-first and offset-paginated with
+  optional `action`, `entityType` and (organization scope) `siteId` filters.
+  Organization listings require `organization.view_audit_logs`; site listings
+  require `site.view_audit_logs`. The route scope is authoritative — a
+  client-provided `siteId` on a site listing is ignored, and an
+  organization-scoped `siteId` filter only narrows within the organization.
+  Actor display data is resolved in one batched query and log metadata is
+  sanitized before it is returned. `GET /manage/auth/me` additionally reports
+  whether the current user is a platform operator.
+- An activity log can be cleared with `DELETE` on the same path
+  (`/manage/organizations/:organizationId/audit-logs`,
+  `/manage/sites/:siteId/audit-logs`). Clearing requires the manage permissions
+  (`organization.manage_audit_logs` / `site.manage_audit_logs`, held by owners,
+  admins and site administrators) and is destructive, but it is itself recorded
+  as a new `audit_log.clear` event with the actor, scope and deleted count.
 
 ## Delivery API
 
@@ -178,17 +220,32 @@ Base path:
 /api/v1/platform
 ```
 
-This route group is restricted to platform operators.
+This route group is restricted to platform operators. Access derives only from
+an explicit `PlatformOperatorAccess` grant, enforced by a dedicated guard that
+runs after the global session guard. Organization ownership and site roles never
+satisfy it. Non-operators are rejected consistently.
 
-Initial route groups are added later:
+Implemented routes:
 
 ```text
-/organizations
-/users
-/health
-/audit-logs
-/analytics
+GET /platform/overview      Organization/site/user counts + recent activity
+GET /platform/health        Database reachability, checkedAt, high-level counts
+GET /platform/audit-logs    Platform-wide, newest-first, same safe pagination
 ```
+
+Platform rules:
+
+- All platform routes are read-only.
+- `health` reports a high-level summary only. It never exposes connection
+  strings, environment values, stack traces or raw database errors, and degrades
+  to `status: "degraded"`, `database: "down"` when the database is unreachable.
+- `audit-logs` uses the same query contract and metadata sanitization as the
+  management audit-log routes but is not pinned to a tenant.
+- The public `GET /api/v1/health` route stays minimal for load-balancer and
+  readiness checks; expensive aggregate counts live only on the operator routes.
+
+Deferred (pending Q-004): `/platform/analytics` and any user-management or
+support mutations. This phase adds no impersonation or destructive actions.
 
 ## Authentication And Authorization
 
@@ -211,7 +268,15 @@ Read-only site token
   -> return published site content
 ```
 
+Platform API:
+
+```text
+User session
+  -> resolve identity (global session guard)
+  -> require explicit PlatformOperatorAccess (platform guard)
+  -> run read-only operator service
+```
+
 ## Deferred Delivery Questions
 
 - Should a site optionally allow public delivery without a token?
-- Should scoped preview tokens be added after publishing?

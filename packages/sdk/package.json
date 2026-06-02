@@ -1,0 +1,41 @@
+{
+  "name": "@structo/sdk",
+  "version": "0.1.0",
+  "description": "Official JavaScript/TypeScript SDK for the Structo headless CMS Delivery API.",
+  "keywords": [
+    "structo",
+    "cms",
+    "headless",
+    "sdk"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "check-types": "tsc --noEmit -p tsconfig.json",
+    "test": "pnpm run build && vitest run"
+  },
+  "devDependencies": {
+    "tsup": "8.5.1",
+    "vitest": "4.1.8"
+  }
+}

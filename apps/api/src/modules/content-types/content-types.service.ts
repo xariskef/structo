@@ -17,7 +17,7 @@ import {
   type TaxonomyKind,
   type UpdateContentTypeInput,
 } from "@structo/contracts";
-import { createField } from "@structo/field-kit";
+import { createField, validateFieldDefinitions } from "@structo/field-kit";
 import type { FieldDefinition } from "@structo/field-kit";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
@@ -424,6 +424,14 @@ export class ContentTypesService {
         .join("; ");
       throw new BadRequestException(
         `Content type schema is invalid: ${messages}`,
+      );
+    }
+
+    try {
+      validateFieldDefinitions(fieldsResult.data);
+    } catch (err) {
+      throw new BadRequestException(
+        err instanceof Error ? err.message : "Field definitions are invalid.",
       );
     }
 

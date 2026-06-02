@@ -12,14 +12,15 @@ The first release focuses on a small, correct core:
 - Frontend applications consume published content through a delivery API.
 
 The public frontend is intentionally outside this repository for now. A starter
-theme and SDK can be added later as separate packages.
+theme can be added later as a separate package and consume the included SDK.
 
 ## Project Status
 
-Status: Phase 7 media support is implemented. Categories, tags, navigation
-menus and a site-scoped media library are available to editors, and external
-frontend projects can retrieve published site content through hashed,
-site-scoped read-only tokens.
+Status: Phase 9.3 starter-theme stabilization is complete. The repository
+includes operational visibility, immutable published snapshots, short-lived
+draft-preview tokens and `@structo/sdk`. The corrective migrations are deployed
+and the expanded browser content-flow verification is passing. Analytics event
+ingestion remains intentionally deferred.
 
 The repository now includes owner registration, login, server-side sessions,
 organizations, sites, invitations, site settings, repeatable collections,
@@ -65,7 +66,7 @@ packages/
   field-kit/      Dynamic field registry, schemas and validation
   storage/        Storage interface and providers
   ui/             Shared administration UI components
-  sdk/            Frontend delivery API client, added later
+  sdk/            Frontend delivery API client
 ```
 
 ## Local Setup

@@ -61,6 +61,20 @@ pnpm db:studio
 Use versioned Prisma migrations. Do not use manual production schema changes as
 the normal workflow.
 
+## Platform Operator Access (Development)
+
+Platform operator access is a standalone grant and is never created during
+registration. After building the database package, grant or revoke it by email:
+
+```bash
+pnpm --filter @structo/database build   # once, to produce dist/ and the client
+pnpm --filter @structo/database db:grant-operator user@example.com
+pnpm --filter @structo/database db:grant-operator user@example.com --revoke
+```
+
+The helper reads `DATABASE_URL` from the root `.env` / `.env.local`, like the
+API. Grant it only to trusted operators of the Structo service.
+
 ## Current Migrations
 
 ```text
@@ -85,6 +99,37 @@ entries with publish revisions, collection and single-page structures,
 editorial metadata and scheduling, and scoped versioned taxonomies with dynamic
 term fields, nested navigation menus, hashed site delivery API tokens and
 site-scoped media metadata.
+
+Phase 9 stabilization adds corrective migrations:
+
+- `20260602220000_stabilize_preview_token_scope` changes entry-scoped preview
+  tokens to cascade on entry deletion so their scope cannot widen.
+- `20260602221000_complete_published_snapshot` stores the content-type version
+  and publication timestamp on every immutable content revision.
+
+Phase 8.1 (operational visibility) added no migration. It reads the existing
+`AuditLog` and `PlatformOperatorAccess` tables; the `AuditLog` indexes on
+`organizationId`, `siteId`, `actorId` and `createdAt` support the activity-log
+listings.
+
+Per-site storage configuration (Phase 8.1 extension) also adds no migration.
+Credentials are stored as `SiteSetting` rows under the `storage.*` key
+namespace. The secret access key is encrypted with `STORAGE_ENCRYPTION_KEY`.
+Generate the key with:
+
+```bash
+openssl rand -hex 32
+```
+
+Add it to `.env` / `.env.local` and to the deployment secret store:
+
+```bash
+STORAGE_ENCRYPTION_KEY=<64 hex chars>   # required for per-site storage secrets
+```
+
+The platform-level R2 fallback (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`) is used when a site
+has no per-site configuration or when `STORAGE_ENCRYPTION_KEY` is absent.
 
 ## Neon Setup Checklist
 

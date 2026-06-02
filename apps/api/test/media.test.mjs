@@ -90,7 +90,9 @@ test("media upload stores metadata and an audit event", async () => {
       });
     },
   };
-  const service = new MediaService({ client }, authorization(), storage);
+  const service = new MediaService({ client }, authorization(), {
+    getForSite: () => storage,
+  });
   const buffer = png();
 
   const asset = await service.upload("u", "site-a", {
@@ -121,7 +123,9 @@ test("media delete rejects ids from another site", async () => {
       },
     },
   };
-  const service = new MediaService({ client }, authorization(), {});
+  const service = new MediaService({ client }, authorization(), {
+    getForSite: () => ({}),
+  });
   await assert.rejects(
     service.remove("u", "site-a", "asset-a"),
     (error) => error instanceof NotFoundException,
@@ -162,7 +166,9 @@ test("media delete rejects assets still referenced by content", async () => {
       return Promise.resolve();
     },
   };
-  const service = new MediaService({ client }, authorization(), storage);
+  const service = new MediaService({ client }, authorization(), {
+    getForSite: () => storage,
+  });
 
   await assert.rejects(
     service.remove("u", "site-a", "asset-a"),

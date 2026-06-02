@@ -43,15 +43,20 @@ function activeContentType() {
 
 function publishedEntry() {
   return {
-    title: "Hello",
-    slug: "hello",
-    data: {},
-    excerpt: null,
-    seoTitle: null,
-    seoDescription: null,
     publishedAt: new Date("2026-06-01T10:00:00.000Z"),
     updatedAt: new Date("2026-06-01T11:00:00.000Z"),
-    taxonomyTerms: [{ term: { kind: "CATEGORY", name: "News", slug: "news" } }],
+    publishedRevision: {
+      title: "Hello",
+      slug: "hello",
+      data: {},
+      excerpt: null,
+      seoTitle: null,
+      seoDescription: null,
+      publishedAt: new Date("2026-06-01T10:00:00.000Z"),
+      createdAt: new Date("2026-06-01T10:00:00.000Z"),
+      contentTypeVersion: { fields: [] },
+      terms: [{ kind: "CATEGORY", name: "News", slug: "news" }],
+    },
   };
 }
 
@@ -66,6 +71,7 @@ test("delivery OpenAPI document is generated as OpenAPI 3.1", () => {
 
 test("delivery lists published entries with pagination and taxonomy filters", async () => {
   let capturedWhere;
+  let capturedOrderBy;
   const client = {
     contentType: {
       findFirst() {
@@ -73,8 +79,9 @@ test("delivery lists published entries with pagination and taxonomy filters", as
       },
     },
     contentEntry: {
-      findMany({ where }) {
+      findMany({ where, orderBy }) {
         capturedWhere = where;
+        capturedOrderBy = orderBy;
         return [publishedEntry()];
       },
       count() {
@@ -95,9 +102,16 @@ test("delivery lists published entries with pagination and taxonomy filters", as
     tag: "featured",
   });
 
-  assert.equal(capturedWhere.status, "PUBLISHED");
-  assert.equal(capturedWhere.AND[0].taxonomyTerms.some.term.kind, "CATEGORY");
-  assert.equal(capturedWhere.AND[1].taxonomyTerms.some.term.kind, "TAG");
+  assert.equal(capturedWhere.status, undefined);
+  assert.deepEqual(capturedWhere.publishedRevisionId, { not: null });
+  assert.deepEqual(capturedOrderBy, {
+    publishedRevision: { title: "asc" },
+  });
+  assert.equal(
+    capturedWhere.AND[0].publishedRevision.terms.some.kind,
+    "CATEGORY",
+  );
+  assert.equal(capturedWhere.AND[1].publishedRevision.terms.some.kind, "TAG");
   assert.deepEqual(result.meta, {
     page: 2,
     pageSize: 10,
@@ -134,8 +148,23 @@ test("delivery sanitizes declared rich-text fields before returning entries", as
       findFirst() {
         return {
           ...publishedEntry(),
-          data: {
-            content: '<p onclick="bad()">Safe<script>bad()</script></p>',
+          publishedRevision: {
+            ...publishedEntry().publishedRevision,
+            data: {
+              content: '<p onclick="bad()">Safe<script>bad()</script></p>',
+            },
+            contentTypeVersion: {
+              fields: [
+                {
+                  id: "content",
+                  type: "richText",
+                  key: "content",
+                  label: "Content",
+                  required: true,
+                  config: {},
+                },
+              ],
+            },
           },
         };
       },
@@ -173,7 +202,25 @@ test("delivery expands media ids into public media objects", async () => {
     },
     contentEntry: {
       findFirst() {
-        return { ...publishedEntry(), data: { hero: "asset-a" } };
+        return {
+          ...publishedEntry(),
+          publishedRevision: {
+            ...publishedEntry().publishedRevision,
+            data: { hero: "asset-a" },
+            contentTypeVersion: {
+              fields: [
+                {
+                  id: "hero",
+                  type: "media",
+                  key: "hero",
+                  label: "Hero",
+                  required: false,
+                  config: {},
+                },
+              ],
+            },
+          },
+        };
       },
     },
     mediaAsset: {
@@ -413,4 +460,140 @@ test("API token revoke persists revokedAt", async () => {
 
   assert.ok(updateData.revokedAt instanceof Date);
   assert.equal(auditData.action, "api_token.revoke");
+});
+
+// ---------------------------------------------------------------------------
+// Regression: draft edits must never reach the Delivery API
+// ---------------------------------------------------------------------------
+
+test("delivery returns snapshot data — not the live draft — after entry is edited without republishing", async () => {
+  // Simulates the state where:
+  //   1. Entry was published with title "Original" and body "Original body"
+  //   2. Editor then updated the draft to "Updated draft" (not re-published)
+  //
+  // The Delivery API must still return the published snapshot ("Original")
+  // and NOT the draft values ("Updated draft").
+
+  const snapshotData = { body: "Original body" };
+  const draftData = { body: "Updated draft" };
+
+  const client = {
+    contentType: {
+      findFirst() {
+        return activeContentType();
+      },
+    },
+    contentEntry: {
+      findFirst() {
+        // entry.data is the draft (edited but not published)
+        // publishedRevision is the frozen snapshot from last publish
+        return {
+          publishedAt: new Date("2026-06-01T10:00:00.000Z"),
+          updatedAt: new Date("2026-06-02T09:00:00.000Z"),
+          data: draftData, // should NOT be used by delivery
+          title: "Updated draft title", // should NOT be used by delivery
+          slug: "original-slug", // should NOT be used by delivery
+          publishedRevision: {
+            title: "Original",
+            slug: "original-slug",
+            data: snapshotData,
+            excerpt: null,
+            seoTitle: null,
+            seoDescription: null,
+            publishedAt: new Date("2026-06-01T10:00:00.000Z"),
+            createdAt: new Date("2026-06-01T10:00:00.000Z"),
+            contentTypeVersion: { fields: [] },
+            terms: [],
+          },
+        };
+      },
+    },
+  };
+
+  const service = new DeliveryService({ client });
+  const entry = await service.getEntry("site-a", "articles", "original-slug");
+
+  assert.equal(entry.title, "Original", "title must come from snapshot");
+  assert.deepEqual(
+    entry.data,
+    snapshotData,
+    "data must come from snapshot, not from draft",
+  );
+  assert.notDeepEqual(
+    entry.data,
+    draftData,
+    "draft data must not leak into delivery response",
+  );
+  assert.equal(
+    entry.updatedAt,
+    "2026-06-01T10:00:00.000Z",
+    "updatedAt must come from the snapshot, not the draft",
+  );
+});
+
+test("delivery menu item URLs use the published snapshot slug", async () => {
+  let capturedWhere;
+  const client = {
+    navigationMenu: {
+      findUnique() {
+        return {
+          key: "main",
+          name: "Main",
+          items: [
+            {
+              label: "Hello",
+              url: "/fallback",
+              target: "_self",
+              reference: { kind: "collectionItem", id: "entry-1" },
+            },
+          ],
+        };
+      },
+    },
+    contentEntry: {
+      findFirst({ where }) {
+        capturedWhere = where;
+        return {
+          contentType: { slug: "articles" },
+          publishedRevision: { slug: "published-slug" },
+        };
+      },
+    },
+  };
+
+  const service = new DeliveryService({ client });
+  const menu = await service.getMenu("site-a", "main");
+
+  assert.deepEqual(capturedWhere.publishedRevisionId, { not: null });
+  assert.equal(capturedWhere.status, undefined);
+  assert.equal(menu.items[0].url, "/articles/published-slug");
+});
+
+test("delivery returns null for entry with no published revision", async () => {
+  // An entry that is PUBLISHED but whose publishedRevisionId was cleared
+  // (e.g., edge case or data inconsistency) should raise NotFoundException,
+  // not expose draft data.
+  const client = {
+    contentType: {
+      findFirst() {
+        return activeContentType();
+      },
+    },
+    contentEntry: {
+      findFirst() {
+        return {
+          publishedAt: new Date("2026-06-01T10:00:00.000Z"),
+          updatedAt: new Date("2026-06-01T11:00:00.000Z"),
+          publishedRevision: null, // no snapshot
+        };
+      },
+    },
+  };
+
+  const service = new DeliveryService({ client });
+
+  await assert.rejects(
+    service.getEntry("site-a", "articles", "broken-slug"),
+    (error) => error instanceof NotFoundException,
+  );
 });

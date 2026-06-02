@@ -13,6 +13,7 @@ import { Separator } from "@structo/ui/components/separator";
 import { Textarea } from "@structo/ui/components/textarea";
 import type {
   EntryDetail,
+  PreviewTokenCreated,
   RevisionSummary,
   SiteSettings,
 } from "@structo/contracts";
@@ -21,8 +22,11 @@ import {
   Archive,
   CalendarClock,
   CheckCircle2,
+  Check,
+  Clipboard,
   Clock,
   ExternalLink,
+  Eye,
   EyeOff,
   Loader2,
   Send,
@@ -90,6 +94,21 @@ export function EntryEditor({
   >(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string>();
+
+  // Preview token
+  const [previewLabel, setPreviewLabel] = useState("");
+  const [previewExpiresAt, setPreviewExpiresAt] = useState("");
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>();
+  const [previewCopied, setPreviewCopied] = useState(false);
+  const [previewError, setPreviewError] = useState<string>();
+  const [previewDateRange] = useState(() => {
+    const now = new Date();
+    return {
+      min: now.toISOString().slice(0, 16),
+      max: new Date(now.getTime() + 86_400_000).toISOString().slice(0, 16),
+    };
+  });
 
   function applyEntry(e: EntryDetail) {
     setEntry(e);
@@ -228,6 +247,47 @@ export function EntryEditor({
     }
   }
 
+  async function generatePreviewToken() {
+    if (!previewLabel || !previewExpiresAt) return;
+    setPreviewBusy(true);
+    setPreviewError(undefined);
+    setPreviewUrl(undefined);
+    try {
+      const created = await apiRequest<PreviewTokenCreated>(
+        `/manage/sites/${siteId}/preview-tokens`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            label: previewLabel,
+            expiresAt: new Date(previewExpiresAt).toISOString(),
+            entryId: entryId,
+          }),
+        },
+      );
+      setPreviewUrl(created.previewUrl ?? created.token);
+      if (!created.previewUrl) {
+        setPreviewError(
+          "Configure the site's public base URL to generate a frontend Draft Mode link. The value shown is the raw token.",
+        );
+      }
+      setPreviewLabel("");
+      setPreviewExpiresAt("");
+    } catch (e: unknown) {
+      setPreviewError(
+        e instanceof Error ? e.message : "Unable to generate preview link.",
+      );
+    } finally {
+      setPreviewBusy(false);
+    }
+  }
+
+  async function copyPreviewUrl() {
+    if (!previewUrl) return;
+    await navigator.clipboard.writeText(previewUrl);
+    setPreviewCopied(true);
+    setTimeout(() => setPreviewCopied(false), 2500);
+  }
+
   async function schedule() {
     if (!scheduleAt) return;
     setBusy("schedule");
@@ -262,7 +322,9 @@ export function EntryEditor({
   const fields = entry.fields as FieldDefinition[];
   const isArchived = entry.status === "ARCHIVED";
   const viewUrl =
-    entry.status === "PUBLISHED" ? publicUrl(publicBaseUrl, entry) : null;
+    entry.latestRevision !== null && !isArchived
+      ? publicUrl(publicBaseUrl, entry)
+      : null;
 
   return (
     <div>
@@ -419,7 +481,18 @@ export function EntryEditor({
                     {entry.status === "DRAFT" ? "Save draft" : "Save changes"}
                   </Button>
 
-                  {entry.status === "PUBLISHED" ? (
+                  <Button size="sm" onClick={publish} disabled={busy !== null}>
+                    <Send className="mr-1.5 h-3.5 w-3.5" />
+                    {busy === "publish"
+                      ? "Publishing…"
+                      : entry.latestRevision !== null
+                        ? "Republish now"
+                        : "Publish now"}
+                  </Button>
+
+                  {(entry.status === "PUBLISHED" ||
+                    (entry.status === "SCHEDULED" &&
+                      entry.latestRevision !== null)) && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -428,15 +501,6 @@ export function EntryEditor({
                     >
                       <EyeOff className="mr-1.5 h-3.5 w-3.5" />
                       {busy === "unpublish" ? "Unpublishing…" : "Unpublish"}
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={publish}
-                      disabled={busy !== null}
-                    >
-                      <Send className="mr-1.5 h-3.5 w-3.5" />
-                      {busy === "publish" ? "Publishing…" : "Publish now"}
                     </Button>
                   )}
 
@@ -489,6 +553,98 @@ export function EntryEditor({
             contentTypeId={entry.contentTypeId}
             disabled={isArchived}
           />
+
+          {/* Preview token card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Eye className="h-4 w-4" />
+                Preview draft
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {previewError && (
+                <p className="text-xs text-destructive">{previewError}</p>
+              )}
+              {previewUrl ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Copy this link now — it is shown only once.
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      aria-label="Preview URL"
+                      value={previewUrl}
+                      readOnly
+                      className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1 font-mono text-[10px]"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void copyPreviewUrl()}
+                    >
+                      {previewCopied ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Clipboard className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid gap-1.5">
+                    <Label
+                      htmlFor="preview-label"
+                      className="text-[11px] text-muted-foreground"
+                    >
+                      Label
+                    </Label>
+                    <Input
+                      id="preview-label"
+                      value={previewLabel}
+                      onChange={(e) => setPreviewLabel(e.currentTarget.value)}
+                      placeholder="e.g. Client review"
+                      className="h-8 text-sm"
+                      maxLength={100}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label
+                      htmlFor="preview-expires"
+                      className="text-[11px] text-muted-foreground"
+                    >
+                      Expires
+                    </Label>
+                    <input
+                      id="preview-expires"
+                      type="datetime-local"
+                      value={previewExpiresAt}
+                      onChange={(e) =>
+                        setPreviewExpiresAt(e.currentTarget.value)
+                      }
+                      min={previewDateRange.min}
+                      max={previewDateRange.max}
+                      className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void generatePreviewToken()}
+                    disabled={previewBusy || !previewLabel || !previewExpiresAt}
+                  >
+                    {previewBusy ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Eye className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {previewBusy ? "Generating…" : "Generate preview link"}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
           {/* SEO card */}
           <Card>

@@ -48,6 +48,7 @@ model User {
   organizationMemberships OrganizationMembership[]
   siteMemberships         SiteMembership[]
   createdInvitations      Invitation[]             @relation("InvitationCreator")
+  createdPreviewTokens    PreviewToken[]           @relation("PreviewTokenCreator")
 }
 
 model PasswordCredential {
@@ -131,6 +132,7 @@ model Site {
   entryTaxonomyTerms    ContentEntryTaxonomyTerm[]
   navigationMenus       NavigationMenu[]
   apiTokens             SiteApiToken[]
+  previewTokens         PreviewToken[]
   mediaAssets           MediaAsset[]
 
   @@unique([organizationId, slug])
@@ -266,6 +268,7 @@ model ContentTypeVersion {
 
   contentType ContentType    @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
   entries     ContentEntry[]
+  revisions   ContentRevision[]
 
   @@unique([contentTypeId, version])
   @@index([contentTypeId])
@@ -284,6 +287,7 @@ model ContentEntry {
   seoTitle             String?
   seoDescription       String?
   publishedAt          DateTime?
+  publishedRevisionId  String?            @unique
   createdById          String?
   updatedById          String?
   createdAt            DateTime           @default(now())
@@ -292,8 +296,10 @@ model ContentEntry {
   site               Site                       @relation(fields: [siteId], references: [id], onDelete: Cascade)
   contentType        ContentType                @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
   contentTypeVersion ContentTypeVersion         @relation(fields: [contentTypeVersionId], references: [id])
-  revisions          ContentRevision[]
+  revisions          ContentRevision[]          @relation("EntryRevisions")
+  publishedRevision  ContentRevision?           @relation("EntryPublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
   taxonomyTerms      ContentEntryTaxonomyTerm[]
+  previewTokens      PreviewToken[]
 
   @@unique([contentTypeId, slug])
   @@index([siteId, status])
@@ -392,18 +398,42 @@ model ContentEntryTaxonomyTerm {
 }
 
 model ContentRevision {
-  id          String             @id @default(cuid())
-  entryId     String
-  revision    Int
-  data        Json
-  status      ContentEntryStatus
-  createdById String?
-  createdAt   DateTime           @default(now())
+  id                   String             @id @default(cuid())
+  entryId              String
+  contentTypeVersionId String
+  revision             Int
+  data                 Json
+  status               ContentEntryStatus
+  title                String             @default("")
+  slug                 String             @default("")
+  excerpt              String?
+  seoTitle             String?
+  seoDescription       String?
+  publishedAt          DateTime
+  createdById          String?
+  createdAt            DateTime           @default(now())
 
-  entry ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entry              ContentEntry             @relation("EntryRevisions", fields: [entryId], references: [id], onDelete: Cascade)
+  contentTypeVersion ContentTypeVersion        @relation(fields: [contentTypeVersionId], references: [id])
+  publishedBy        ContentEntry?            @relation("EntryPublishedRevision")
+  terms              RevisionTaxonomyTerm[]
 
   @@unique([entryId, revision])
   @@index([entryId])
+  @@index([contentTypeVersionId])
+}
+
+model RevisionTaxonomyTerm {
+  revisionId String
+  termId     String
+  kind       String
+  name       String
+  slug       String
+
+  revision ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+
+  @@id([revisionId, termId])
+  @@index([revisionId])
 }
 
 model AuditLog {
@@ -456,5 +486,28 @@ model Invitation {
   @@index([organizationId])
   @@index([siteId])
   @@index([email])
+  @@index([expiresAt])
+}
+
+// Preview tokens let editors share a time-limited URL to preview draft content.
+// The raw token is revealed once; only the HMAC-SHA256 hash is persisted.
+model PreviewToken {
+  id          String    @id @default(cuid())
+  siteId      String
+  // Optional: scope the token to a single entry (null = whole-site preview)
+  entryId     String?
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  label       String    @default("")
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  site        Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  entry       ContentEntry? @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  createdBy   User?         @relation("PreviewTokenCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([siteId])
+  @@index([entryId])
   @@index([expiresAt])
 }

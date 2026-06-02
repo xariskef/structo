@@ -2,6 +2,8 @@
 
 import {
   ChevronLeft,
+  Cloud,
+  Eye,
   FileText,
   ImageIcon,
   Layers,
@@ -10,6 +12,7 @@ import {
   LogOut,
   FolderTree,
   KeyRound,
+  ScrollText,
   Settings,
   Tag,
   Users,
@@ -168,13 +171,25 @@ export function SiteSidebarNav({ siteId }: SiteSidebarNavProps) {
               <Users className="h-4 w-4 shrink-0" />
               Members
             </NavLink>
+            <NavLink href={`${base}/activity`}>
+              <ScrollText className="h-4 w-4 shrink-0" />
+              Activity
+            </NavLink>
             <NavLink href={`${base}/settings`}>
               <Settings className="h-4 w-4 shrink-0" />
               Settings
             </NavLink>
+            <NavLink href={`${base}/storage`}>
+              <Cloud className="h-4 w-4 shrink-0" />
+              Storage
+            </NavLink>
             <NavLink href={`${base}/api-tokens`}>
               <KeyRound className="h-4 w-4 shrink-0" />
               API tokens
+            </NavLink>
+            <NavLink href={`${base}/preview-tokens`}>
+              <Eye className="h-4 w-4 shrink-0" />
+              Preview tokens
             </NavLink>
           </div>
         </div>

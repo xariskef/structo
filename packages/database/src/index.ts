@@ -1,6 +1,7 @@
 export { createDatabaseClient } from "./client.js";
 export {
   OrganizationMembershipRole,
+  PlatformOperatorRole,
   Prisma,
   SiteMembershipRole,
   UserStatus,

@@ -80,18 +80,51 @@ Implemented site permissions:
 
 ```text
 site.view
+site.view_audit_logs
 site.manage_content_types
 site.create_content
 site.edit_content
 site.publish_content
 site.manage_taxonomies
+site.manage_navigation
+site.manage_media
+site.manage_api_tokens
 site.manage_members
 site.manage_settings
 ```
 
+Implemented organization permissions:
+
+```text
+organization.view
+organization.view_audit_logs
+organization.manage_sites
+organization.manage_members
+```
+
 Only organization owners, organization administrators and site administrators
 can change content type schemas. Editors can publish. Authors can create and
-edit drafts but cannot publish.
+edit drafts but cannot publish. Audit-log viewing is read-only and separate:
+`organization.view_audit_logs` is held by org OWNER, ADMIN and ANALYST;
+`site.view_audit_logs` is held by SITE_ADMIN and inherited by those same org
+roles. Editors, authors and viewers cannot read activity logs.
+
+## Platform Operator Access
+
+- Platform operator access is a standalone grant (`PlatformOperatorAccess`,
+  role `PLATFORM_ADMIN`), fully separate from organization and site membership.
+- Organization ownership, organization roles and site roles never imply
+  platform access.
+- Enforce platform access with a dedicated guard on `/api/v1/platform` routes,
+  running after the global session guard. Reject non-operators consistently.
+- Keep all platform routes read-only in this phase. Do not add a public
+  self-service route to become a platform operator, organization impersonation
+  or destructive support actions.
+- Grant the role out of band with the documented development helper
+  (`pnpm --filter @structo/database db:grant-operator <email>`), never during
+  ordinary registration.
+- Platform health must stay high level: never return connection strings,
+  environment values, stack traces or raw database errors.
 
 ## Secrets
 
@@ -146,11 +179,57 @@ edit drafts but cannot publish.
   media base URL.
 - Add malware scanning later if deployment risk requires it.
 
+## Per-Site Storage Credentials
+
+- Storage credentials (R2 access key ID, secret access key, bucket, public URL)
+  are persisted as `SiteSetting` rows (no new table or migration).
+- The secret access key is encrypted at rest with AES-256-GCM using the
+  platform-level `STORAGE_ENCRYPTION_KEY` env var. Format: `v1:<iv>:<tag>:<data>`
+  (all base64 components).
+- The secret is **write-only**: the API never returns it. The `getStatus`
+  response includes only a `secretSet` boolean.
+- Saving credentials triggers a real test write to the bucket; invalid
+  credentials are rejected with `400 Bad Request` before anything is persisted.
+- Public URL probes require HTTPS, reject credentials, custom ports, private or
+  local resolved addresses and redirects, and stop after a 10-second timeout.
+- Access is gated by the existing `site.manage_settings` permission.
+- Both `update` and `clear` are recorded as `site.storage.update` /
+  `site.storage.clear` audit events.
+- When `STORAGE_ENCRYPTION_KEY` is absent or decryption fails, the platform-level
+  R2 env fallback is used silently (a warning is logged).
+
+## Preview Tokens
+
+- Preview tokens are random `stp_` bearer credentials. Only their SHA-256 hashes
+  are stored. The raw token and frontend Draft Mode URL are revealed once.
+- Tokens expire within 24 hours, can be revoked, are scoped to one site and may
+  be narrowed to one entry.
+- Deleting an entry cascade-deletes its entry-scoped tokens. A deleted scope
+  must never widen into site-level access.
+- CMS preview routes accept the token only through the Authorization bearer
+  header. The frontend bridge validates `/preview/session`, stores the token in
+  an HttpOnly cookie and redirects away from the initial token-bearing URL.
+
 ## Logging
 
 - Record important management operations in audit logs.
 - Avoid writing secrets, raw tokens or sensitive personal data to logs.
 - Include actor, tenant, action, entity and timestamp when possible.
+- Expose audit logs read-only through explicit `*.view_audit_logs` permissions.
+  Re-enforce organization and site scope in the service layer; a foreign
+  `siteId` filter must match nothing rather than reveal another tenant's events.
+- Sanitize audit metadata at the read boundary, redacting secret-looking keys
+  (password, token, hash, secret, credential, authorization, cookie, api key,
+  private key) before activity is returned, as defence in depth.
+- Resolve actor display data in one batched query (no N+1) and render events
+  with no actor (scheduled jobs) as a system actor.
+- Clearing an activity log is a separate, destructive manage action
+  (`organization.manage_audit_logs` / `site.manage_audit_logs`, held only by
+  owners, admins and site administrators — never analysts, editors, authors or
+  viewers). It requires confirmation in the UI and is itself recorded as a new
+  `audit_log.clear` event (actor, scope, deleted count), so the trail always
+  shows who cleared it and when. This is a deliberate trade-off: it reduces the
+  log's tamper-evidence in exchange for an administrator-controlled reset.
 
 ## Reference Project Warning
 

@@ -4,8 +4,11 @@
 
 The identity, tenancy, site settings, audit log, content type and content entry
 foundations are implemented through versioned Prisma migrations. Delivery and
-media are implemented; later operational entities remain conceptual until their
-feature work begins.
+media are implemented. Phase 8.1 adds read-only access over the existing
+`AuditLog` records (organization and site activity logs) and a restricted
+platform operator surface backed by `PlatformOperatorAccess`. `AnalyticsEvent`
+remains conceptual until the Q-004 boundary is decided. No new tables or
+migrations were required for Phase 8.1.
 
 ## Identity And Access
 
@@ -44,6 +47,9 @@ Initial role:
 ```text
 PLATFORM_ADMIN
 ```
+
+This grant alone gates the `/api/v1/platform` operator routes. It is never
+created during registration; a documented development helper grants it by email.
 
 ### PasswordCredential
 
@@ -198,6 +204,23 @@ overlapping settings model.
 
 Organization settings and platform settings can be added only when their scope
 is clearly distinct.
+
+#### Per-Site Storage Keys
+
+Storage configuration is stored as `SiteSetting` rows using the following
+reserved key names. No additional table or migration is required.
+
+```text
+storage.provider      — always "r2" when configured
+storage.accountId     — Cloudflare account ID
+storage.accessKeyId   — R2 access key ID
+storage.bucket        — R2 bucket name
+storage.publicBaseUrl — public R2 base URL (r2.dev or custom domain)
+storage.secret        — AES-256-GCM encrypted secret access key (write-only)
+```
+
+The `SettingsService` ignores these `storage.*` keys so they never leak
+through the general settings API.
 
 ## Content Modeling
 
@@ -396,13 +419,42 @@ Core fields:
 ```text
 id
 entryId
+contentTypeVersionId
 revision
 dataJson
 status
+title
+slug
+excerpt
+seoTitle
+seoDescription
+publishedAt
 createdById
 createdAt
 
 unique(entryId, revision)
+index(contentTypeVersionId)
+```
+
+`ContentEntry.publishedRevisionId` is the authoritative live-content pointer.
+Working entry state may become `SCHEDULED` while the previous immutable
+revision remains deliverable.
+
+### PreviewToken
+
+Stores a revocable draft-preview bearer credential. Only the token hash is
+persisted.
+
+```text
+id
+siteId
+entryId?       // null means site-wide; entry deletion cascades scoped tokens
+tokenHash
+expiresAt
+revokedAt?
+label
+createdById?
+createdAt
 ```
 
 ## Navigation
@@ -512,22 +564,36 @@ Core fields:
 
 ```text
 id
-organizationId
+organizationId?
 siteId?
-actorUserId?
+actorId?
 action
 entityType
 entityId?
 metadataJson?
 createdAt
+
+index(organizationId)
+index(siteId)
+index(actorId)
+index(createdAt)
 ```
+
+Read access is exposed newest-first through organization, site and platform
+listings. Listings re-enforce scope server-side, resolve actor display data in a
+single batched lookup (no N+1), render events with no actor as a system actor,
+and sanitize metadata to redact secret-looking keys before returning it.
+
+An organization or site activity log can also be cleared by a manager. Clearing
+deletes the events in that scope and writes a new `audit_log.clear` event
+recording the actor, scope and deleted count, so the trail is never fully
+erased.
 
 ### AnalyticsEvent
 
-Reserved for later analytics work.
-
-The initial implementation should define the intended event boundary before
-collecting visitor data.
+Reserved for later analytics work and intentionally not implemented in Phase
+8.1. The first analytics boundary (Q-004) must be decided before any visitor
+data is collected.
 
 ## Tenancy Invariants
 

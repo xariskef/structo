@@ -100,7 +100,7 @@ export function MediaManager({ siteId }: { siteId: string }) {
   }
 
   return (
-    <div>
+    <div className="p-8">
       <div className="mb-8">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
           Content

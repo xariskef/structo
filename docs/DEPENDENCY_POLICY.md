@@ -132,6 +132,8 @@ Verified Phase 1 baseline:
 | sanitize-html        | `2.17.4`                | `2026-06-01` | Stable registry `latest`; parser-based server-side Delivery API rich-text sanitization                                                      |
 | @types/sanitize-html | `2.16.1`                | `2026-06-01` | Stable registry `latest`; TypeScript declarations for `sanitize-html`                                                                       |
 | @aws-sdk/client-s3   | `3.1058.0`              | `2026-06-02` | Stable registry `latest`; official S3 client used by the Cloudflare R2 storage adapter                                                      |
+| tsup                 | `8.5.1`                 | `2026-06-02` | Stable registry `latest`; bundles `@structo/sdk` to ESM + CJS with `.d.ts` declarations; dev-only in `packages/sdk`                         |
+| vitest               | `4.1.8`                 | `2026-06-02` | Stable registry `latest`; test runner for `packages/sdk`; dev-only                                                                          |
 
 ## Continuous Integration
 

@@ -403,3 +403,30 @@ export function labelToKey(label: string): string {
     )
     .join("");
 }
+
+/**
+ * Validates that no group/repeater nesting exceeds `maxDepth` levels.
+ * Throws with a descriptive message if the limit is exceeded.
+ */
+export function validateFieldDefinitions(
+  fields: FieldDefinition[],
+  maxDepth = 5,
+): void {
+  function walk(defs: FieldDefinition[], depth: number): void {
+    if (depth > maxDepth) {
+      throw new Error(
+        `Field nesting depth exceeds the maximum of ${maxDepth}.`,
+      );
+    }
+    for (const field of defs) {
+      if (field.type === "group" || field.type === "repeater") {
+        const nested = (field.config as GroupConfig | RepeaterConfig | null)
+          ?.fields;
+        if (Array.isArray(nested) && nested.length > 0) {
+          walk(nested as FieldDefinition[], depth + 1);
+        }
+      }
+    }
+  }
+  walk(fields, 1);
+}

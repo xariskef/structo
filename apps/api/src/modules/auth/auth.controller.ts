@@ -8,6 +8,7 @@ import {
 import type { Request, Response } from "express";
 
 import { parseInput } from "../../common/validation/parse-input.js";
+import { AuthorizationService } from "../authorization/authorization.service.js";
 import { CurrentUser } from "./current-user.decorator.js";
 import { AuthService } from "./auth.service.js";
 import type { AuthenticatedUser } from "./auth.types.js";
@@ -23,6 +24,8 @@ export class AuthController {
     private readonly authService: AuthService,
     @Inject(SessionCookieService)
     private readonly sessionCookieService: SessionCookieService,
+    @Inject(AuthorizationService)
+    private readonly authorizationService: AuthorizationService,
   ) {}
 
   @Public()
@@ -83,7 +86,14 @@ export class AuthController {
   }
 
   @Get("me")
-  getCurrentUser(@CurrentUser() user: AuthenticatedUser) {
-    return { user };
+  async getCurrentUser(@CurrentUser() user: AuthenticatedUser) {
+    const platformRole = await this.authorizationService.getPlatformRole(
+      user.id,
+    );
+
+    return {
+      user,
+      platformOperator: platformRole ? { role: platformRole } : null,
+    };
   }
 }
