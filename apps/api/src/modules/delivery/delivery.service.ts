@@ -186,6 +186,53 @@ export class DeliveryService {
     );
   }
 
+  /**
+   * Return the live draft of a single entry regardless of publish state.
+   * Only available behind a valid preview token — never on the public delivery path.
+   */
+  async getEntryDraft(
+    siteId: string,
+    entryId: string,
+  ): Promise<DeliveryEntry> {
+    const entry = await this.db.client.contentEntry.findUnique({
+      where: { id: entryId },
+      include: {
+        contentType: {
+          include: {
+            versions: {
+              orderBy: { version: "desc" },
+              take: 1,
+              select: { fields: true },
+            },
+          },
+        },
+        publishedRevision: { include: { terms: true } },
+        taxonomyTerms: { include: { term: { select: { kind: true, name: true, slug: true } } } },
+      },
+    });
+    if (!entry || entry.siteId !== siteId) {
+      throw new NotFoundException("Entry not found.");
+    }
+    const fields = entry.contentType.versions[0]?.fields;
+    // Build a synthetic snapshot from the live draft fields
+    return {
+      contentTypeSlug: entry.contentType.slug,
+      title: entry.title,
+      slug: entry.slug,
+      data: await this.renderData(siteId, fields, entry.data),
+      excerpt: entry.excerpt,
+      seoTitle: entry.seoTitle,
+      seoDescription: entry.seoDescription,
+      publishedAt: entry.publishedAt?.toISOString() ?? null,
+      updatedAt: entry.updatedAt.toISOString(),
+      terms: entry.taxonomyTerms.map((t) => ({
+        kind: t.term.kind as "CATEGORY" | "TAG",
+        name: t.term.name,
+        slug: t.term.slug,
+      })),
+    };
+  }
+
   async getMenu(siteId: string, key: string): Promise<DeliveryMenu> {
     const menu = await this.db.client.navigationMenu.findUnique({
       where: { siteId_key: { siteId, key } },

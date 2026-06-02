@@ -10,5 +10,6 @@ import { DeliveryTokenService } from "./delivery-token.service.js";
   imports: [AuthModule],
   controllers: [DeliveryController],
   providers: [DeliveryService, DeliveryTokenService, DeliveryTokenGuard],
+  exports: [DeliveryService],
 })
 export class DeliveryModule {}

@@ -48,6 +48,7 @@ model User {
   organizationMemberships OrganizationMembership[]
   siteMemberships         SiteMembership[]
   createdInvitations      Invitation[]             @relation("InvitationCreator")
+  createdPreviewTokens    PreviewToken[]           @relation("PreviewTokenCreator")
 }
 
 model PasswordCredential {
@@ -131,6 +132,7 @@ model Site {
   entryTaxonomyTerms    ContentEntryTaxonomyTerm[]
   navigationMenus       NavigationMenu[]
   apiTokens             SiteApiToken[]
+  previewTokens         PreviewToken[]
   mediaAssets           MediaAsset[]
 
   @@unique([organizationId, slug])
@@ -296,6 +298,7 @@ model ContentEntry {
   revisions          ContentRevision[]          @relation("EntryRevisions")
   publishedRevision  ContentRevision?           @relation("EntryPublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
   taxonomyTerms      ContentEntryTaxonomyTerm[]
+  previewTokens      PreviewToken[]
 
   @@unique([contentTypeId, slug])
   @@index([siteId, status])
@@ -478,5 +481,28 @@ model Invitation {
   @@index([organizationId])
   @@index([siteId])
   @@index([email])
+  @@index([expiresAt])
+}
+
+// Preview tokens let editors share a time-limited URL to preview draft content.
+// The raw token is revealed once; only the HMAC-SHA256 hash is persisted.
+model PreviewToken {
+  id          String    @id @default(cuid())
+  siteId      String
+  // Optional: scope the token to a single entry (null = whole-site preview)
+  entryId     String?
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  label       String    @default("")
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  site        Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  entry       ContentEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  createdBy   User?         @relation("PreviewTokenCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([siteId])
+  @@index([entryId])
   @@index([expiresAt])
 }

@@ -428,3 +428,93 @@ test("API token revoke persists revokedAt", async () => {
   assert.ok(updateData.revokedAt instanceof Date);
   assert.equal(auditData.action, "api_token.revoke");
 });
+
+// ---------------------------------------------------------------------------
+// Regression: draft edits must never reach the Delivery API
+// ---------------------------------------------------------------------------
+
+test("delivery returns snapshot data — not the live draft — after entry is edited without republishing", async () => {
+  // Simulates the state where:
+  //   1. Entry was published with title "Original" and body "Original body"
+  //   2. Editor then updated the draft to "Updated draft" (not re-published)
+  //
+  // The Delivery API must still return the published snapshot ("Original")
+  // and NOT the draft values ("Updated draft").
+
+  const snapshotData = { body: "Original body" };
+  const draftData = { body: "Updated draft" };
+
+  const client = {
+    contentType: {
+      findFirst() {
+        return activeContentType();
+      },
+    },
+    contentEntry: {
+      findFirst() {
+        // entry.data is the draft (edited but not published)
+        // publishedRevision is the frozen snapshot from last publish
+        return {
+          publishedAt: new Date("2026-06-01T10:00:00.000Z"),
+          updatedAt: new Date("2026-06-02T09:00:00.000Z"),
+          data: draftData, // should NOT be used by delivery
+          title: "Updated draft title", // should NOT be used by delivery
+          slug: "original-slug", // should NOT be used by delivery
+          publishedRevision: {
+            title: "Original",
+            slug: "original-slug",
+            data: snapshotData,
+            excerpt: null,
+            seoTitle: null,
+            seoDescription: null,
+            terms: [],
+          },
+        };
+      },
+    },
+  };
+
+  const service = new DeliveryService({ client });
+  const entry = await service.getEntry("site-a", "articles", "original-slug");
+
+  assert.equal(entry.title, "Original", "title must come from snapshot");
+  assert.deepEqual(
+    entry.data,
+    snapshotData,
+    "data must come from snapshot, not from draft",
+  );
+  assert.notDeepEqual(
+    entry.data,
+    draftData,
+    "draft data must not leak into delivery response",
+  );
+});
+
+test("delivery returns null for entry with no published revision", async () => {
+  // An entry that is PUBLISHED but whose publishedRevisionId was cleared
+  // (e.g., edge case or data inconsistency) should raise NotFoundException,
+  // not expose draft data.
+  const client = {
+    contentType: {
+      findFirst() {
+        return activeContentType();
+      },
+    },
+    contentEntry: {
+      findFirst() {
+        return {
+          publishedAt: new Date("2026-06-01T10:00:00.000Z"),
+          updatedAt: new Date("2026-06-01T11:00:00.000Z"),
+          publishedRevision: null, // no snapshot
+        };
+      },
+    },
+  };
+
+  const service = new DeliveryService({ client });
+
+  await assert.rejects(
+    service.getEntry("site-a", "articles", "broken-slug"),
+    (error) => error instanceof NotFoundException,
+  );
+});

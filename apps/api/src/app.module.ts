@@ -21,6 +21,7 @@ import { DeliveryModule } from "./modules/delivery/delivery.module.js";
 import { MediaModule } from "./modules/media/media.module.js";
 import { PlatformModule } from "./modules/platform/platform.module.js";
 import { SiteStorageModule } from "./modules/site-storage/site-storage.module.js";
+import { PreviewTokensModule } from "./modules/preview-tokens/preview-tokens.module.js";
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { SiteStorageModule } from "./modules/site-storage/site-storage.module.js
     SiteStorageModule,
     MediaModule,
     PlatformModule,
+    PreviewTokensModule,
   ],
   providers: [
     {
