@@ -9,11 +9,14 @@ import {
   activatableContentTypeFieldsSchema,
   type BulkContentTypesInput,
   type ContentTypeDetail,
+  type ContentTypeExport,
   type ContentTypeKind,
   type ContentTypePreset,
   type ContentTypeSummary,
   type CreateContentTypeInput,
   type EntryStatus,
+  type ImportContentTypeInput,
+  type ImportContentTypeResult,
   type TaxonomyKind,
   type UpdateContentTypeInput,
 } from "@structo/contracts";
@@ -547,6 +550,314 @@ export class ContentTypesService {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
+  }
+
+  // ─── Export ───────────────────────────────────────────────────────────────
+
+  async exportContentType(
+    userId: string,
+    siteId: string,
+    contentTypeId: string,
+  ): Promise<ContentTypeExport> {
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.view",
+    );
+
+    const contentType = await this.db.client.contentType.findUnique({
+      where: { id: contentTypeId },
+      include: {
+        taxonomies: { select: { taxonomy: true } },
+        entries: {
+          where: { status: { not: "ARCHIVED" } },
+          select: {
+            title: true,
+            slug: true,
+            status: true,
+            data: true,
+            excerpt: true,
+            seoTitle: true,
+            seoDescription: true,
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!contentType || contentType.siteId !== siteId) {
+      throw new NotFoundException("Content type not found.");
+    }
+
+    const fields = Array.isArray(contentType.fields)
+      ? (contentType.fields as unknown as FieldDefinition[])
+      : [];
+
+    return {
+      version: "1",
+      exportedAt: new Date().toISOString(),
+      contentType: {
+        name: contentType.name,
+        singularName: contentType.singularName ?? contentType.name,
+        pluralName: contentType.pluralName ?? contentType.name,
+        slug: contentType.slug,
+        kind: contentType.kind,
+        ...(contentType.description
+          ? { description: contentType.description }
+          : {}),
+        fields,
+        taxonomies: contentType.taxonomies.map((t) => t.taxonomy),
+      },
+      entries: contentType.entries.map((entry) => ({
+        title: entry.title,
+        slug: entry.slug,
+        status: entry.status,
+        data: (entry.data ?? {}) as Record<string, unknown>,
+        ...(entry.excerpt ? { excerpt: entry.excerpt } : {}),
+        ...(entry.seoTitle ? { seoTitle: entry.seoTitle } : {}),
+        ...(entry.seoDescription
+          ? { seoDescription: entry.seoDescription }
+          : {}),
+      })),
+    };
+  }
+
+  // ─── Import ───────────────────────────────────────────────────────────────
+
+  async importContentType(
+    userId: string,
+    siteId: string,
+    input: ImportContentTypeInput,
+  ): Promise<ImportContentTypeResult> {
+    await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.manage_content_types",
+    );
+
+    const site = await this.findSite(siteId);
+
+    // Assign stable IDs to any fields that lack them (AI-generated bundles).
+    const fields = this.fillFieldIds(
+      input.contentType.fields as Array<
+        Omit<FieldDefinition, "id"> & { id?: string }
+      >,
+    );
+
+    // Validate the field definitions are activatable before persisting.
+    const fieldsResult = activatableContentTypeFieldsSchema.safeParse(fields);
+    if (!fieldsResult.success) {
+      const messages = fieldsResult.error.issues
+        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+        .join("; ");
+      throw new BadRequestException(
+        `Imported field schema is invalid: ${messages}`,
+      );
+    }
+
+    try {
+      validateFieldDefinitions(fieldsResult.data);
+    } catch (err) {
+      throw new BadRequestException(
+        err instanceof Error
+          ? err.message
+          : "Imported field definitions are invalid.",
+      );
+    }
+
+    const ct = input.contentType;
+    const singularName = ct.singularName ?? ct.name;
+    const pluralName = ct.pluralName ?? ct.name;
+    const taxonomies = ct.taxonomies;
+
+    // Create the content type, activate it, then bulk-insert entries.
+    let contentTypeId: string;
+    try {
+      const created = await this.db.client.$transaction(async (tx) => {
+        const row = await tx.contentType.create({
+          data: {
+            siteId,
+            kind: ct.kind,
+            name: ct.name,
+            singularName,
+            pluralName,
+            slug: ct.slug,
+            description: ct.description ?? null,
+            fields: JSON.parse(JSON.stringify(fieldsResult.data)),
+            status: "ACTIVE",
+            ...(taxonomies.length > 0
+              ? {
+                  taxonomies: {
+                    create: taxonomies.map((taxonomy) => ({
+                      siteId,
+                      taxonomy,
+                    })),
+                  },
+                }
+              : {}),
+          },
+        });
+
+        if (ct.kind === "COLLECTION") {
+          const scopeKey = `content-type:${row.id}`;
+          for (const kind of ["CATEGORY", "TAG"] as const) {
+            await tx.taxonomyDefinition.create({
+              data: {
+                siteId,
+                contentTypeId: row.id,
+                scope: "CONTENT_TYPE",
+                scopeKey,
+                kind,
+                versions: { create: { version: 1, fields: [] } },
+              },
+            });
+          }
+        }
+
+        await tx.contentTypeVersion.create({
+          data: {
+            contentTypeId: row.id,
+            version: 1,
+            fields: JSON.parse(JSON.stringify(fieldsResult.data)),
+            createdById: userId,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            organizationId: site.organizationId,
+            siteId,
+            actorId: userId,
+            action: "content_type.import",
+            entityType: "ContentType",
+            entityId: row.id,
+            metadata: {
+              kind: ct.kind,
+              name: ct.name,
+              slug: ct.slug,
+              entryCount: input.entries.length,
+            },
+          },
+        });
+
+        return row;
+      });
+      contentTypeId = created.id;
+    } catch (error: unknown) {
+      this.throwSlugConflict(error);
+    }
+
+    const contentType = await this.get(userId, siteId, contentTypeId!);
+
+    // Bulk-create entries.
+    let entriesCreated = 0;
+    let entriesFailed = 0;
+    const errors: string[] = [];
+
+    if (input.entries.length > 0) {
+      // Version 1 was created in the transaction above; resolve its UUID once.
+      const versionId = await this.resolveVersionId(contentTypeId!, 1);
+
+      const usedSlugs = new Set<string>();
+
+      for (const entry of input.entries) {
+        try {
+          const slug = this.resolveEntrySlug(
+            entry.title,
+            entry.slug,
+            usedSlugs,
+          );
+          usedSlugs.add(slug);
+
+          const created = await this.db.client.contentEntry.create({
+            data: {
+              siteId,
+              contentTypeId: contentTypeId!,
+              contentTypeVersionId: versionId,
+              title: entry.title,
+              slug,
+              status: "DRAFT",
+              data: JSON.parse(JSON.stringify(entry.data ?? {})),
+              excerpt: entry.excerpt ?? null,
+              seoTitle: entry.seoTitle ?? null,
+              seoDescription: entry.seoDescription ?? null,
+              createdById: userId,
+              updatedById: userId,
+            },
+            select: { id: true },
+          });
+
+          if (entry.status === "PUBLISHED") {
+            await this.entriesService.publish(userId, siteId, created.id);
+          }
+
+          entriesCreated += 1;
+        } catch (err) {
+          entriesFailed += 1;
+          errors.push(
+            `Entry "${entry.title}": ${
+              err instanceof Error ? err.message : "unknown error"
+            }`,
+          );
+        }
+      }
+    }
+
+    return { contentType, entriesCreated, entriesFailed, errors };
+  }
+
+  // Fill missing `id` values on imported fields (including nested ones inside
+  // group/repeater config) so every FieldDefinition has a stable UUID.
+  private fillFieldIds(
+    fields: Array<Omit<FieldDefinition, "id"> & { id?: string }>,
+  ): FieldDefinition[] {
+    return fields.map((field) => {
+      const id = field.id ?? crypto.randomUUID();
+      const config = { ...(field.config as Record<string, unknown>) };
+
+      if (
+        (field.type === "group" || field.type === "repeater") &&
+        Array.isArray(config.fields)
+      ) {
+        config.fields = this.fillFieldIds(
+          config.fields as Array<Omit<FieldDefinition, "id"> & { id?: string }>,
+        );
+      }
+
+      return { ...field, id, config } as FieldDefinition;
+    });
+  }
+
+  // Derive a URL-safe slug from a title, ensuring uniqueness within the import
+  // batch by appending an incrementing counter.
+  private resolveEntrySlug(
+    title: string,
+    provided: string | undefined,
+    usedSlugs: Set<string>,
+  ): string {
+    const derived =
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") || "entry";
+    const base = provided ?? derived;
+
+    if (!usedSlugs.has(base)) return base;
+
+    let counter = 2;
+    while (usedSlugs.has(`${base}-${counter}`)) counter++;
+    return `${base}-${counter}`;
+  }
+
+  private async resolveVersionId(
+    contentTypeId: string,
+    version: number,
+  ): Promise<string> {
+    const row = await this.db.client.contentTypeVersion.findFirst({
+      where: { contentTypeId, version },
+      select: { id: true },
+    });
+    return row?.id ?? "";
   }
 
   private toDetail(

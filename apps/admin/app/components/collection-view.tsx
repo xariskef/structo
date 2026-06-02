@@ -1,14 +1,15 @@
 "use client";
 
 import { Badge } from "@structo/ui/components/badge";
+import { Button } from "@structo/ui/components/button";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@structo/ui/components/tabs";
-import type { ContentTypeDetail } from "@structo/contracts";
-import { Loader2 } from "lucide-react";
+import type { ContentTypeDetail, ContentTypeExport } from "@structo/contracts";
+import { Download, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -31,6 +32,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
 export function CollectionView({ siteId, contentTypeId }: CollectionViewProps) {
   const [collection, setCollection] = useState<ContentTypeDetail | null>(null);
   const [error, setError] = useState<string>();
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     void apiRequest<ContentTypeDetail>(
@@ -48,6 +50,26 @@ export function CollectionView({ siteId, contentTypeId }: CollectionViewProps) {
       );
   }, [siteId, contentTypeId]);
 
+  async function handleExport() {
+    if (!collection) return;
+    setIsExporting(true);
+    try {
+      const data = await apiRequest<ContentTypeExport>(
+        `/manage/sites/${siteId}/content-types/${contentTypeId}/export`,
+      );
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${collection.slug}-export.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }
   if (error) {
     return (
       <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -91,6 +113,17 @@ export function CollectionView({ siteId, contentTypeId }: CollectionViewProps) {
           >
             {collection.status}
           </Badge>
+          <div className="ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleExport()}
+              disabled={isExporting}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              {isExporting ? "Exporting…" : "Export"}
+            </Button>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">{collection.slug}</p>
       </div>

@@ -335,6 +335,97 @@ export type CreateContentTypeInput = z.infer<typeof createContentTypeSchema>;
 export type UpdateContentTypeInput = z.infer<typeof updateContentTypeSchema>;
 export type BulkContentTypesInput = z.infer<typeof bulkContentTypesSchema>;
 
+// ─── Import / Export ──────────────────────────────────────────────────────────
+// Import-flavoured field definition: `id` is optional so that AI-generated
+// bundles do not need to include it — the API fills it in automatically.
+export const importFieldSchema = z.object({
+  id: z.string().optional(),
+  type: z.enum(FIELD_TYPES as unknown as [FieldType, ...FieldType[]]),
+  label: z.string().min(1).max(100),
+  key: fieldKeySchema,
+  required: z.boolean().default(false),
+  description: z.string().max(300).optional(),
+  // config may contain nested `fields` arrays for group/repeater types.
+  // Deep validation is deferred to activation (field-kit's validateFieldDefinitions).
+  config: z.record(z.string(), z.unknown()).default({}),
+});
+
+const importEntrySchema = z.object({
+  title: z.string().min(1).max(200),
+  // If omitted the API derives a slug from the title.
+  slug: z
+    .string()
+    .max(200)
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Slug must be lowercase letters, numbers and hyphens.",
+    )
+    .optional(),
+  status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
+  data: z.record(z.string(), z.unknown()).default({}),
+  excerpt: z.string().max(300).optional(),
+  seoTitle: z.string().max(70).optional(),
+  seoDescription: z.string().max(160).optional(),
+});
+
+export const importContentTypeSchema = z.object({
+  version: z.literal("1"),
+  contentType: z.object({
+    name: z.string().min(1).max(100),
+    singularName: z.string().min(1).max(100).optional(),
+    pluralName: z.string().min(1).max(100).optional(),
+    slug: contentTypeSlugSchema,
+    kind: contentTypeKindSchema.default("COLLECTION"),
+    description: z.string().max(500).optional(),
+    fields: z
+      .array(importFieldSchema)
+      .min(1, "At least one field is required."),
+    taxonomies: z
+      .array(taxonomyKindSchema)
+      .max(2)
+      .refine(
+        (taxonomies) => new Set(taxonomies).size === taxonomies.length,
+        "Taxonomies must be unique.",
+      )
+      .default([]),
+  }),
+  entries: z.array(importEntrySchema).default([]),
+});
+
+export type ImportContentTypeInput = z.infer<typeof importContentTypeSchema>;
+export type ImportEntryInput = z.infer<typeof importEntrySchema>;
+
+export interface ContentTypeExport {
+  version: "1";
+  exportedAt: string;
+  contentType: {
+    name: string;
+    singularName: string;
+    pluralName: string;
+    slug: string;
+    kind: ContentTypeKind;
+    description?: string;
+    fields: FieldDefinition[];
+    taxonomies: TaxonomyKind[];
+  };
+  entries: Array<{
+    title: string;
+    slug: string;
+    status: EntryStatus;
+    data: Record<string, unknown>;
+    excerpt?: string;
+    seoTitle?: string;
+    seoDescription?: string;
+  }>;
+}
+
+export interface ImportContentTypeResult {
+  contentType: ContentTypeDetail;
+  entriesCreated: number;
+  entriesFailed: number;
+  errors: string[];
+}
+
 // Response types
 
 export interface ContentTypeSummary {

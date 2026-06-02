@@ -13,6 +13,7 @@ import {
   bulkContentTypesSchema,
   contentTypeKindSchema,
   createContentTypeSchema,
+  importContentTypeSchema,
   updateContentTypeSchema,
   type ContentTypeKind,
 } from "@structo/contracts";
@@ -110,5 +111,32 @@ export class ContentTypesController {
     @Param("contentTypeId") contentTypeId: string,
   ) {
     return this.contentTypesService.archive(user.id, siteId, contentTypeId);
+  }
+
+  @Get("sites/:siteId/content-types/:contentTypeId/export")
+  exportContentType(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("siteId") siteId: string,
+    @Param("contentTypeId") contentTypeId: string,
+  ) {
+    return this.contentTypesService.exportContentType(
+      user.id,
+      siteId,
+      contentTypeId,
+    );
+  }
+
+  @Post("sites/:siteId/content-types/import")
+  @HttpCode(201)
+  importContentType(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("siteId") siteId: string,
+    @Body() body: unknown,
+  ) {
+    return this.contentTypesService.importContentType(
+      user.id,
+      siteId,
+      parseInput(importContentTypeSchema, body),
+    );
   }
 }

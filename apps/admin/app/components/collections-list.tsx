@@ -10,11 +10,20 @@ import {
 } from "@structo/ui/components/card";
 import { Input } from "@structo/ui/components/input";
 import { Label } from "@structo/ui/components/label";
-import type { ContentTypeSummary } from "@structo/contracts";
-import { Layers, Plus } from "lucide-react";
+import type {
+  ContentTypeSummary,
+  ImportContentTypeResult,
+} from "@structo/contracts";
+import { Layers, Plus, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { apiRequest } from "../lib/api";
 
@@ -49,6 +58,21 @@ export function CollectionsList({ siteId }: CollectionsListProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string>();
+
+  // Import state
+  const [showImport, setShowImport] = useState(false);
+  const [importJson, setImportJson] = useState("");
+  const [importPreview, setImportPreview] = useState<{
+    name: string;
+    slug: string;
+    fieldCount: number;
+    entryCount: number;
+  } | null>(null);
+  const [importParseError, setImportParseError] = useState<string>();
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] =
+    useState<ImportContentTypeResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void apiRequest<ContentTypeSummary[]>(
@@ -88,6 +112,95 @@ export function CollectionsList({ siteId }: CollectionsListProps) {
     }
   }
 
+  function parseImportJson(text: string) {
+    setImportJson(text);
+    setImportParseError(undefined);
+    setImportPreview(null);
+    if (!text.trim()) return;
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        !("contentType" in parsed) ||
+        typeof (parsed as Record<string, unknown>).contentType !== "object"
+      ) {
+        setImportParseError('JSON must have a "contentType" object.');
+        return;
+      }
+      const ct = (parsed as Record<string, unknown>).contentType as Record<
+        string,
+        unknown
+      >;
+      const entries = (parsed as Record<string, unknown>).entries;
+      setImportPreview({
+        name: String(ct.name ?? ""),
+        slug: String(ct.slug ?? ""),
+        fieldCount: Array.isArray(ct.fields) ? ct.fields.length : 0,
+        entryCount: Array.isArray(entries) ? entries.length : 0,
+      });
+    } catch {
+      setImportParseError("Invalid JSON — check syntax and try again.");
+    }
+  }
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      parseImportJson(String(ev.target?.result ?? ""));
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleImport() {
+    if (!importJson.trim()) return;
+    setIsImporting(true);
+    setImportResult(null);
+    try {
+      const result = await apiRequest<ImportContentTypeResult>(
+        `/manage/sites/${siteId}/content-types/import`,
+        { method: "POST", body: importJson },
+      );
+      setImportResult(result);
+      setCollections((prev) => [
+        ...prev,
+        {
+          id: result.contentType.id,
+          siteId: result.contentType.siteId,
+          kind: result.contentType.kind,
+          name: result.contentType.name,
+          singularName: result.contentType.singularName,
+          pluralName: result.contentType.pluralName,
+          slug: result.contentType.slug,
+          status: result.contentType.status,
+          fieldCount: result.contentType.fields.length,
+          singleEntryId: result.contentType.singleEntryId,
+          singleEntryStatus: null,
+          itemCount: result.entriesCreated,
+          createdAt: result.contentType.createdAt,
+          updatedAt: result.contentType.updatedAt,
+        },
+      ]);
+    } catch (e: unknown) {
+      setImportParseError(
+        e instanceof Error ? e.message : "Import failed. Check the JSON.",
+      );
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
+  function resetImport() {
+    setShowImport(false);
+    setImportJson("");
+    setImportPreview(null);
+    setImportParseError(undefined);
+    setImportResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   return (
     <div>
       {/* Header */}
@@ -104,11 +217,133 @@ export function CollectionsList({ siteId }: CollectionsListProps) {
             services, and more.
           </p>
         </div>
-        <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          {showCreate ? "Cancel" : "New collection"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              resetImport();
+              setShowImport((v) => !v);
+              setShowCreate(false);
+            }}
+          >
+            <Upload className="mr-1.5 h-4 w-4" />
+            {showImport ? "Cancel" : "Import"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              setShowCreate((v) => !v);
+              setShowImport(false);
+            }}
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            {showCreate ? "Cancel" : "New collection"}
+          </Button>
+        </div>
       </div>
+
+      {/* Import form */}
+      {showImport && (
+        <Card className="mb-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base">Import collection</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {importResult ? (
+              <div className="flex flex-col gap-3">
+                <div className="rounded-md bg-green-500/10 px-4 py-3 text-sm text-green-700 dark:text-green-400">
+                  <p className="font-medium">
+                    ✓ "{importResult.contentType.pluralName}" imported
+                    successfully
+                  </p>
+                  <p className="mt-0.5 text-xs">
+                    {importResult.entriesCreated} entr
+                    {importResult.entriesCreated !== 1 ? "ies" : "y"} created
+                    {importResult.entriesFailed > 0
+                      ? `, ${importResult.entriesFailed} failed`
+                      : ""}
+                  </p>
+                </div>
+                {importResult.errors.length > 0 && (
+                  <ul className="flex flex-col gap-1">
+                    {importResult.errors.map((err, i) => (
+                      <li
+                        key={i}
+                        className="text-xs text-destructive"
+                      >{`• ${err}`}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      router.push(
+                        `/dashboard/sites/${siteId}/collections/${importResult.contentType.id}`,
+                      )
+                    }
+                  >
+                    Open collection
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={resetImport}>
+                    Import another
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-1.5">
+                  <Label>Upload JSON file</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileChange}
+                    className="text-sm file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1 file:text-sm file:font-medium hover:file:bg-accent"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="import-json">Or paste JSON</Label>
+                  <textarea
+                    id="import-json"
+                    rows={8}
+                    value={importJson}
+                    onChange={(e) => parseImportJson(e.target.value)}
+                    placeholder='{"version":"1","contentType":{...},"entries":[...]}'
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                {importParseError && (
+                  <p className="text-sm text-destructive">{importParseError}</p>
+                )}
+                {importPreview && !importParseError && (
+                  <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm">
+                    <p className="font-medium">{importPreview.name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {importPreview.slug} · {importPreview.fieldCount} field
+                      {importPreview.fieldCount !== 1 ? "s" : ""} ·{" "}
+                      {importPreview.entryCount} entr
+                      {importPreview.entryCount !== 1 ? "ies" : "y"}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <Button
+                    size="sm"
+                    onClick={() => void handleImport()}
+                    disabled={
+                      isImporting || !importPreview || !!importParseError
+                    }
+                  >
+                    {isImporting ? "Importing…" : "Import collection"}
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Create form */}
       {showCreate && (
