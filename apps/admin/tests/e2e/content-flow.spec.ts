@@ -117,13 +117,15 @@ test(
     // ── 5. Edit the draft (do NOT republish) ────────────────────────────
     // Navigate back to the entry and change the title.
     await page.getByRole("link", { name: "Collections", exact: true }).click();
+    await page.getByRole("link", { name: "Articles" }).click();
     await page.getByRole("tab", { name: "Content" }).click();
     await page.getByRole("link", { name: "Original title" }).click();
     await page.waitForURL(/\/items\/.+/);
 
     await page.getByLabel("Title").fill("Draft-only title");
-    await page.getByRole("button", { name: "Save draft" }).click();
-    await expect(page.getByText(/Draft saved/i)).toBeVisible({ timeout: 10_000 });
+    // Entry is PUBLISHED — the button reads "Save changes", not "Save draft".
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByText("Saved")).toBeVisible({ timeout: 10_000 });
 
     // ── 6. REGRESSION: Delivery API must still return the OLD snapshot ───
     const res2 = await request.get(entriesUrl, {
