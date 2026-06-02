@@ -19,6 +19,7 @@
     "db:migrate": "corepack pnpm --filter @structo/database db:migrate",
     "db:deploy": "corepack pnpm --filter @structo/database db:deploy",
     "db:studio": "corepack pnpm --filter @structo/database db:studio",
+    "db:grant-operator": "corepack pnpm --filter @structo/database db:grant-operator",
     "deps:verify": "node scripts/verify-dependencies.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

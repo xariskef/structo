@@ -1,6 +1,12 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import type {
   OrganizationMembershipRole,
+  PlatformOperatorRole,
   SiteMembershipRole,
 } from "@structo/database";
 
@@ -101,5 +107,29 @@ export class AuthorizationService {
       directRole: siteMembership?.role ?? null,
       permissions,
     };
+  }
+
+  /**
+   * Platform-operator access is a standalone grant, fully separate from any
+   * organization or site membership. Owning an organization never implies it.
+   */
+  async getPlatformRole(userId: string): Promise<PlatformOperatorRole | null> {
+    const access =
+      await this.databaseService.client.platformOperatorAccess.findUnique({
+        where: { userId },
+        select: { role: true },
+      });
+
+    return access?.role ?? null;
+  }
+
+  async assertPlatformOperator(userId: string): Promise<PlatformOperatorRole> {
+    const role = await this.getPlatformRole(userId);
+
+    if (!role) {
+      throw new ForbiddenException("Platform operator access is required.");
+    }
+
+    return role;
   }
 }

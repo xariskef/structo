@@ -61,6 +61,20 @@ pnpm db:studio
 Use versioned Prisma migrations. Do not use manual production schema changes as
 the normal workflow.
 
+## Platform Operator Access (Development)
+
+Platform operator access is a standalone grant and is never created during
+registration. After building the database package, grant or revoke it by email:
+
+```bash
+pnpm --filter @structo/database build   # once, to produce dist/ and the client
+pnpm --filter @structo/database db:grant-operator user@example.com
+pnpm --filter @structo/database db:grant-operator user@example.com --revoke
+```
+
+The helper reads `DATABASE_URL` from the root `.env` / `.env.local`, like the
+API. Grant it only to trusted operators of the Structo service.
+
 ## Current Migrations
 
 ```text
@@ -85,6 +99,11 @@ entries with publish revisions, collection and single-page structures,
 editorial metadata and scheduling, and scoped versioned taxonomies with dynamic
 term fields, nested navigation menus, hashed site delivery API tokens and
 site-scoped media metadata.
+
+Phase 8.1 (operational visibility) added no migration. It reads the existing
+`AuditLog` and `PlatformOperatorAccess` tables; the `AuditLog` indexes on
+`organizationId`, `siteId`, `actorId` and `createdAt` support the activity-log
+listings.
 
 ## Neon Setup Checklist
 

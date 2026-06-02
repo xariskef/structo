@@ -16,8 +16,10 @@ import { NavigationModule } from "./modules/navigation/navigation.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
 import { TaxonomiesModule } from "./modules/taxonomies/taxonomies.module.js";
 import { ApiTokensModule } from "./modules/api-tokens/api-tokens.module.js";
+import { AuditLogsModule } from "./modules/audit-logs/audit-logs.module.js";
 import { DeliveryModule } from "./modules/delivery/delivery.module.js";
 import { MediaModule } from "./modules/media/media.module.js";
+import { PlatformModule } from "./modules/platform/platform.module.js";
 
 @Module({
   imports: [
@@ -40,8 +42,10 @@ import { MediaModule } from "./modules/media/media.module.js";
     SitesModule,
     TaxonomiesModule,
     ApiTokensModule,
+    AuditLogsModule,
     DeliveryModule,
     MediaModule,
+    PlatformModule,
   ],
   providers: [
     {

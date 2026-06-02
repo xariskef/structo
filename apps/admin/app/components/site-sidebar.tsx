@@ -10,6 +10,7 @@ import {
   LogOut,
   FolderTree,
   KeyRound,
+  ScrollText,
   Settings,
   Tag,
   Users,
@@ -167,6 +168,10 @@ export function SiteSidebarNav({ siteId }: SiteSidebarNavProps) {
             <NavLink href={`${base}/members`}>
               <Users className="h-4 w-4 shrink-0" />
               Members
+            </NavLink>
+            <NavLink href={`${base}/activity`}>
+              <ScrollText className="h-4 w-4 shrink-0" />
+              Activity
             </NavLink>
             <NavLink href={`${base}/settings`}>
               <Settings className="h-4 w-4 shrink-0" />

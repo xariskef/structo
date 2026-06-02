@@ -80,18 +80,51 @@ Implemented site permissions:
 
 ```text
 site.view
+site.view_audit_logs
 site.manage_content_types
 site.create_content
 site.edit_content
 site.publish_content
 site.manage_taxonomies
+site.manage_navigation
+site.manage_media
+site.manage_api_tokens
 site.manage_members
 site.manage_settings
 ```
 
+Implemented organization permissions:
+
+```text
+organization.view
+organization.view_audit_logs
+organization.manage_sites
+organization.manage_members
+```
+
 Only organization owners, organization administrators and site administrators
 can change content type schemas. Editors can publish. Authors can create and
-edit drafts but cannot publish.
+edit drafts but cannot publish. Audit-log viewing is read-only and separate:
+`organization.view_audit_logs` is held by org OWNER, ADMIN and ANALYST;
+`site.view_audit_logs` is held by SITE_ADMIN and inherited by those same org
+roles. Editors, authors and viewers cannot read activity logs.
+
+## Platform Operator Access
+
+- Platform operator access is a standalone grant (`PlatformOperatorAccess`,
+  role `PLATFORM_ADMIN`), fully separate from organization and site membership.
+- Organization ownership, organization roles and site roles never imply
+  platform access.
+- Enforce platform access with a dedicated guard on `/api/v1/platform` routes,
+  running after the global session guard. Reject non-operators consistently.
+- Keep all platform routes read-only in this phase. Do not add a public
+  self-service route to become a platform operator, organization impersonation
+  or destructive support actions.
+- Grant the role out of band with the documented development helper
+  (`pnpm --filter @structo/database db:grant-operator <email>`), never during
+  ordinary registration.
+- Platform health must stay high level: never return connection strings,
+  environment values, stack traces or raw database errors.
 
 ## Secrets
 
@@ -151,6 +184,14 @@ edit drafts but cannot publish.
 - Record important management operations in audit logs.
 - Avoid writing secrets, raw tokens or sensitive personal data to logs.
 - Include actor, tenant, action, entity and timestamp when possible.
+- Expose audit logs read-only through explicit `*.view_audit_logs` permissions.
+  Re-enforce organization and site scope in the service layer; a foreign
+  `siteId` filter must match nothing rather than reveal another tenant's events.
+- Sanitize audit metadata at the read boundary, redacting secret-looking keys
+  (password, token, hash, secret, credential, authorization, cookie, api key,
+  private key) before activity is returned, as defence in depth.
+- Resolve actor display data in one batched query (no N+1) and render events
+  with no actor (scheduled jobs) as a system actor.
 
 ## Reference Project Warning
 

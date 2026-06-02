@@ -5,7 +5,10 @@
 The modular monolith scaffold, identity and tenancy, administration UI, site
 settings, custom content types and content entry modules are implemented. Core
 content hardening, the editorial workflow, scoped versioned taxonomies,
-navigation menus and the token-authenticated delivery API are implemented.
+navigation menus, the token-authenticated delivery API and the media library are
+implemented. Phase 8.1 adds read-only operational visibility: organization and
+site activity logs and a restricted platform operator surface (overview, health,
+audit logs).
 
 ## System Shape
 
@@ -111,6 +114,8 @@ apps/api/src/modules/
   api-tokens/
   delivery/
   media/
+  audit-logs/
+  platform/
 ```
 
 Planned later modules:
@@ -120,9 +125,7 @@ apps/api/src/modules/
   users/
   organization-memberships/
   site-memberships/
-  audit-logs/
   analytics/
-  platform-admin/
 ```
 
 Each module should contain its controller, service, DTOs and tests. Shared

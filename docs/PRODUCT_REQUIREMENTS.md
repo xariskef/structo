@@ -95,6 +95,7 @@ Needs:
 - Manage excerpts, SEO metadata and bulk editorial actions.
 - Upload, edit, delete and select site-scoped media.
 - Manage delivery API tokens.
+- View the site activity log.
 
 ### Content Modeling
 
@@ -132,6 +133,20 @@ Needs:
 - Entry lists support offset pagination, sorting and category/tag slug filters.
 - OpenAPI JSON and interactive Swagger documentation are served by the API.
 - Draft preview is a later capability.
+
+### Operational Visibility
+
+- Organization owners, administrators and analysts can read a newest-first
+  organization activity log and filter it by site.
+- Site administrators (and inherited organization roles) can read a site
+  activity log. Editors, authors and viewers cannot.
+- Activity logs are read-only views over recorded audit events; they never
+  expose secrets in metadata.
+- Platform operators get a separate, restricted console with system-wide counts,
+  recent activity and a high-level health summary. It is visually distinct and
+  denies access to non-operators.
+- Analytics event ingestion is intentionally deferred until its boundary is
+  agreed; this phase collects no visitor data.
 
 ## Initial Non-Functional Requirements
 

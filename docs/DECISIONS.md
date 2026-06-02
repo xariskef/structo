@@ -356,16 +356,57 @@ Keep SEO metadata as built-in entry and taxonomy fields. Reuse one
 administration form component for their title and description controls so the
 same limits and interaction patterns apply consistently.
 
+### D-124: Operational Visibility Before Analytics Ingestion
+
+Status: accepted.
+
+Phase 8.1 ships read-only operational visibility first and defers analytics
+event ingestion until Q-004 is resolved.
+
+- Organization and site **activity logs** read the existing `AuditLog` records
+  through new read-only permissions (`organization.view_audit_logs`,
+  `site.view_audit_logs`). No new collection mechanism is introduced. Listings
+  are newest-first with offset pagination; scope is re-enforced in the service
+  layer and a foreign `siteId` filter matches nothing rather than leaking another
+  tenant's events. Actor labels are resolved in one batched query; scheduled
+  events with no actor render as "System". Log metadata is sanitized to redact
+  secret-looking keys before it leaves the API.
+- **Platform operator access** stays explicit and standalone. It comes only from
+  `PlatformOperatorAccess` and is never implied by organization ownership or a
+  site role. Platform routes live under `/api/v1/platform` behind a dedicated
+  guard, are read-only, and `health` never exposes connection strings,
+  environment values or raw database errors. The role is granted out of band by
+  a documented development helper, never during registration.
+- **Analytics ingestion is not started.** No tracking pixels, frontend scripts,
+  IP collection, cookies, visitor identifiers or retention policies are added
+  until Q-004 is agreed and documented.
+
+### D-125: Analytics Boundary — Administration And CMS Usage Only
+
+Status: accepted (resolves Q-004).
+
+The first analytics boundary collects **administration activity and CMS usage
+metrics only**. No visitor analytics ingestion is built in this scope: no
+tracking pixels, frontend scripts, IP collection, cookies, visitor identifiers
+or visitor retention policy.
+
+Metrics are derived from first-party administration and content activity already
+present in the system (for example publish counts, content-type and entry
+totals, scheduled-vs-published trends and editorial actions over time), and are
+aggregated at organization and site level. They reuse the existing `AuditLog`
+and content tables wherever possible.
+
+Visitor analytics remains explicitly out of scope and may be reconsidered later
+as a separate, privacy-reviewed decision.
+
 ## Open Decisions
 
-### Q-004: Analytics
+### Q-004: Analytics — RESOLVED
 
-Define the initial analytics scope:
-
-- Administrative activity only
-- CMS usage metrics
-- Visitor analytics ingestion
-- A staged combination of the above
+Resolved by **D-125**: administration and CMS usage metrics only; visitor
+analytics is not built for now. No visitor tracking, cookies, IP collection,
+identifiers or retention policy may be added without a new, separately recorded
+decision.
 
 ### Q-005: Product Naming
 

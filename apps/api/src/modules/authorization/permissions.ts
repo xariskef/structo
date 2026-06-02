@@ -5,11 +5,13 @@ import type {
 
 export type OrganizationPermission =
   | "organization.view"
+  | "organization.view_audit_logs"
   | "organization.manage_sites"
   | "organization.manage_members";
 
 export type SitePermission =
   | "site.view"
+  | "site.view_audit_logs"
   | "site.manage_content_types"
   | "site.create_content"
   | "site.edit_content"
@@ -27,15 +29,17 @@ export const ORGANIZATION_ROLE_PERMISSIONS: Record<
 > = {
   OWNER: [
     "organization.view",
+    "organization.view_audit_logs",
     "organization.manage_sites",
     "organization.manage_members",
   ],
   ADMIN: [
     "organization.view",
+    "organization.view_audit_logs",
     "organization.manage_sites",
     "organization.manage_members",
   ],
-  ANALYST: ["organization.view"],
+  ANALYST: ["organization.view", "organization.view_audit_logs"],
 };
 
 export const INHERITED_SITE_PERMISSIONS: Record<
@@ -44,6 +48,7 @@ export const INHERITED_SITE_PERMISSIONS: Record<
 > = {
   OWNER: [
     "site.view",
+    "site.view_audit_logs",
     "site.manage_content_types",
     "site.create_content",
     "site.edit_content",
@@ -57,6 +62,7 @@ export const INHERITED_SITE_PERMISSIONS: Record<
   ],
   ADMIN: [
     "site.view",
+    "site.view_audit_logs",
     "site.manage_content_types",
     "site.create_content",
     "site.edit_content",
@@ -68,7 +74,7 @@ export const INHERITED_SITE_PERMISSIONS: Record<
     "site.manage_members",
     "site.manage_settings",
   ],
-  ANALYST: ["site.view"],
+  ANALYST: ["site.view", "site.view_audit_logs"],
 };
 
 export const SITE_ROLE_PERMISSIONS: Record<
@@ -77,6 +83,7 @@ export const SITE_ROLE_PERMISSIONS: Record<
 > = {
   SITE_ADMIN: [
     "site.view",
+    "site.view_audit_logs",
     "site.manage_content_types",
     "site.create_content",
     "site.edit_content",

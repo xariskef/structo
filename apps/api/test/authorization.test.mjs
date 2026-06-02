@@ -109,3 +109,46 @@ test("organization analysts cannot create sites", async () => {
     NotFoundException,
   );
 });
+
+test("organization analysts can view organization audit logs", async () => {
+  const service = createService({
+    organizationMemberships: {
+      "organization-a:analyst": { role: "ANALYST" },
+    },
+  });
+
+  const role = await service.assertOrganizationPermission(
+    "analyst",
+    "organization-a",
+    "organization.view_audit_logs",
+  );
+
+  assert.equal(role, "ANALYST");
+});
+
+test("site admins and inherited org roles can view audit logs; editors cannot", async () => {
+  const service = createService({
+    organizationMemberships: {
+      "organization-a:analyst": { role: "ANALYST" },
+    },
+    siteMemberships: {
+      "site-a:admin": { role: "SITE_ADMIN" },
+      "site-a:editor": { role: "EDITOR" },
+    },
+    sites: {
+      "site-a": { organizationId: "organization-a" },
+    },
+  });
+
+  await service.assertSitePermission("admin", "site-a", "site.view_audit_logs");
+  await service.assertSitePermission(
+    "analyst",
+    "site-a",
+    "site.view_audit_logs",
+  );
+
+  await assert.rejects(
+    service.assertSitePermission("editor", "site-a", "site.view_audit_logs"),
+    NotFoundException,
+  );
+});

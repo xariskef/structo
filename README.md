@@ -16,10 +16,12 @@ theme and SDK can be added later as separate packages.
 
 ## Project Status
 
-Status: Phase 7 media support is implemented. Categories, tags, navigation
-menus and a site-scoped media library are available to editors, and external
-frontend projects can retrieve published site content through hashed,
-site-scoped read-only tokens.
+Status: Phase 8.1 operational visibility is implemented. Organizations and
+sites have read-only activity logs, and Structo platform operators have a
+separate restricted console with system-wide counts, recent activity and a
+high-level health summary. Earlier phases — through the Phase 7 media library
+and the token-authenticated delivery API — remain in place. Analytics event
+ingestion is intentionally not started yet.
 
 The repository now includes owner registration, login, server-side sessions,
 organizations, sites, invitations, site settings, repeatable collections,

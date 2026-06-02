@@ -1,6 +1,13 @@
 "use client";
 
-import { Building2, ChevronDown, LogOut, Users } from "lucide-react";
+import {
+  Building2,
+  ChevronDown,
+  LogOut,
+  ScrollText,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -24,6 +31,7 @@ interface OrgSidebarNavProps {
 export function OrgSidebarNav({ organizationId }: OrgSidebarNavProps) {
   const router = useRouter();
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
+  const [isPlatformOperator, setIsPlatformOperator] = useState(false);
   const [showSwitcher, setShowSwitcher] = useState(false);
 
   const currentOrg = organizations.find((o) => o.id === organizationId);
@@ -36,6 +44,14 @@ export function OrgSidebarNav({ organizationId }: OrgSidebarNavProps) {
         router.replace("/login");
       });
   }, [organizationId, router]);
+
+  useEffect(() => {
+    void apiRequest<{ platformOperator: { role: string } | null }>(
+      "/manage/auth/me",
+    )
+      .then((me) => setIsPlatformOperator(me.platformOperator !== null))
+      .catch(() => setIsPlatformOperator(false));
+  }, []);
 
   async function logout() {
     await apiRequest("/manage/auth/logout", { method: "POST" }).catch(() => {});
@@ -108,7 +124,25 @@ export function OrgSidebarNav({ organizationId }: OrgSidebarNavProps) {
             <Users className="h-4 w-4 shrink-0" />
             Members
           </NavLink>
+          <NavLink href={`${base}/activity`}>
+            <ScrollText className="h-4 w-4 shrink-0" />
+            Activity
+          </NavLink>
         </div>
+
+        {isPlatformOperator && (
+          <div className="mt-4">
+            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+              Platform
+            </p>
+            <div className="flex flex-col gap-0.5">
+              <NavLink href="/dashboard/platform">
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                Operator console
+              </NavLink>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Logout */}

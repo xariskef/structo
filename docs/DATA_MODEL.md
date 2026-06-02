@@ -4,8 +4,11 @@
 
 The identity, tenancy, site settings, audit log, content type and content entry
 foundations are implemented through versioned Prisma migrations. Delivery and
-media are implemented; later operational entities remain conceptual until their
-feature work begins.
+media are implemented. Phase 8.1 adds read-only access over the existing
+`AuditLog` records (organization and site activity logs) and a restricted
+platform operator surface backed by `PlatformOperatorAccess`. `AnalyticsEvent`
+remains conceptual until the Q-004 boundary is decided. No new tables or
+migrations were required for Phase 8.1.
 
 ## Identity And Access
 
@@ -44,6 +47,9 @@ Initial role:
 ```text
 PLATFORM_ADMIN
 ```
+
+This grant alone gates the `/api/v1/platform` operator routes. It is never
+created during registration; a documented development helper grants it by email.
 
 ### PasswordCredential
 
@@ -512,22 +518,31 @@ Core fields:
 
 ```text
 id
-organizationId
+organizationId?
 siteId?
-actorUserId?
+actorId?
 action
 entityType
 entityId?
 metadataJson?
 createdAt
+
+index(organizationId)
+index(siteId)
+index(actorId)
+index(createdAt)
 ```
+
+Read access is exposed newest-first through organization, site and platform
+listings. Listings re-enforce scope server-side, resolve actor display data in a
+single batched lookup (no N+1), render events with no actor as a system actor,
+and sanitize metadata to redact secret-looking keys before returning it.
 
 ### AnalyticsEvent
 
-Reserved for later analytics work.
-
-The initial implementation should define the intended event boundary before
-collecting visitor data.
+Reserved for later analytics work and intentionally not implemented in Phase
+8.1. The first analytics boundary (Q-004) must be decided before any visitor
+data is collected.
 
 ## Tenancy Invariants
 
