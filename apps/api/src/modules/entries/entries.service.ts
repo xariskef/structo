@@ -24,6 +24,7 @@ import type { FieldDefinition } from "@structo/field-kit";
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { DatabaseService } from "../database/database.service.js";
 import { assertSiteMediaAssets } from "../media/media-references.js";
+import { WebhooksService } from "../webhooks/webhooks.service.js";
 
 @Injectable()
 export class EntriesService {
@@ -32,6 +33,8 @@ export class EntriesService {
     private readonly db: DatabaseService,
     @Inject(AuthorizationService)
     private readonly authorizationService: AuthorizationService,
+    @Inject(WebhooksService)
+    private readonly webhooksService: WebhooksService,
   ) {}
 
   async list(
@@ -398,7 +401,8 @@ export class EntriesService {
       where: { id: entryId },
       include: {
         contentTypeVersion: { select: { fields: true } },
-        site: { select: { organizationId: true } },
+        site: { select: { organizationId: true, key: true } },
+        contentType: { select: { slug: true } },
         revisions: {
           orderBy: { revision: "desc" },
           take: 1,
@@ -496,6 +500,14 @@ export class EntriesService {
       });
     });
 
+    this.webhooksService.dispatch(entry.site.key, siteId, "entry.published", {
+      id: entryId,
+      contentTypeSlug: entry.contentType.slug,
+      slug: entry.slug,
+      title: entry.title,
+      status: "published",
+    });
+
     return this.get(userId, siteId, entryId);
   }
 
@@ -513,8 +525,8 @@ export class EntriesService {
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
       include: {
-        site: { select: { organizationId: true } },
-        contentType: { select: { kind: true } },
+        site: { select: { organizationId: true, key: true } },
+        contentType: { select: { kind: true, slug: true } },
       },
     });
 
@@ -551,6 +563,19 @@ export class EntriesService {
         },
       }),
     ]);
+
+    this.webhooksService.dispatch(
+      entry.site.key,
+      siteId,
+      "entry.unpublished",
+      {
+        id: entryId,
+        contentTypeSlug: entry.contentType.slug,
+        slug: entry.slug,
+        title: entry.title,
+        status: "draft",
+      },
+    );
 
     return this.get(userId, siteId, entryId);
   }
@@ -694,8 +719,8 @@ export class EntriesService {
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
       include: {
-        site: { select: { organizationId: true } },
-        contentType: { select: { kind: true } },
+        site: { select: { organizationId: true, key: true } },
+        contentType: { select: { kind: true, slug: true } },
       },
     });
 
@@ -728,6 +753,14 @@ export class EntriesService {
           metadata: { title: entry.title },
         },
       });
+    });
+
+    this.webhooksService.dispatch(entry.site.key, siteId, "entry.deleted", {
+      id: entryId,
+      contentTypeSlug: entry.contentType.slug,
+      slug: entry.slug,
+      title: entry.title,
+      status: "deleted",
     });
   }
 
@@ -798,7 +831,8 @@ export class EntriesService {
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
       include: {
-        site: { select: { organizationId: true } },
+        site: { select: { organizationId: true, key: true } },
+        contentType: { select: { slug: true } },
         contentTypeVersion: { select: { fields: true } },
       },
     });
@@ -851,6 +885,14 @@ export class EntriesService {
         },
       }),
     ]);
+
+    this.webhooksService.dispatch(entry.site.key, siteId, "entry.scheduled", {
+      id: entryId,
+      contentTypeSlug: entry.contentType.slug,
+      slug: entry.slug,
+      title: entry.title,
+      status: "scheduled",
+    });
 
     return this.get(userId, siteId, entryId);
   }

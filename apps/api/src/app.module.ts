@@ -22,6 +22,7 @@ import { MediaModule } from "./modules/media/media.module.js";
 import { PlatformModule } from "./modules/platform/platform.module.js";
 import { SiteStorageModule } from "./modules/site-storage/site-storage.module.js";
 import { PreviewTokensModule } from "./modules/preview-tokens/preview-tokens.module.js";
+import { WebhooksModule } from "./modules/webhooks/webhooks.module.js";
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { PreviewTokensModule } from "./modules/preview-tokens/preview-tokens.mod
     MediaModule,
     PlatformModule,
     PreviewTokensModule,
+    WebhooksModule,
   ],
   providers: [
     {

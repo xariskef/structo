@@ -23,6 +23,7 @@ export type SitePermission =
   | "site.manage_media"
   | "site.manage_api_tokens"
   | "site.manage_preview_tokens"
+  | "site.manage_webhooks"
   | "site.manage_members"
   | "site.manage_settings";
 
@@ -64,6 +65,7 @@ export const INHERITED_SITE_PERMISSIONS: Record<
     "site.manage_media",
     "site.manage_api_tokens",
     "site.manage_preview_tokens",
+    "site.manage_webhooks",
     "site.manage_members",
     "site.manage_settings",
   ],
@@ -80,6 +82,7 @@ export const INHERITED_SITE_PERMISSIONS: Record<
     "site.manage_media",
     "site.manage_api_tokens",
     "site.manage_preview_tokens",
+    "site.manage_webhooks",
     "site.manage_members",
     "site.manage_settings",
   ],
@@ -103,6 +106,7 @@ export const SITE_ROLE_PERMISSIONS: Record<
     "site.manage_media",
     "site.manage_api_tokens",
     "site.manage_preview_tokens",
+    "site.manage_webhooks",
     "site.manage_members",
     "site.manage_settings",
   ],

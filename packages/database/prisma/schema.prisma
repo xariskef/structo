@@ -134,6 +134,7 @@ model Site {
   apiTokens             SiteApiToken[]
   previewTokens         PreviewToken[]
   mediaAssets           MediaAsset[]
+  webhooks              Webhook[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -149,6 +150,24 @@ model SiteApiToken {
   expiresAt  DateTime?
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+}
+
+model Webhook {
+  id              String    @id @default(cuid())
+  siteId          String
+  label           String
+  url             String
+  secret          String
+  events          String[]
+  enabled         Boolean   @default(true)
+  lastTriggeredAt DateTime?
+  lastDeliveryOk  Boolean?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
 

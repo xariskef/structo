@@ -16,6 +16,7 @@ import {
   Settings,
   Tag,
   Users,
+  Webhook,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -190,6 +191,10 @@ export function SiteSidebarNav({ siteId }: SiteSidebarNavProps) {
             <NavLink href={`${base}/preview-tokens`}>
               <Eye className="h-4 w-4 shrink-0" />
               Preview tokens
+            </NavLink>
+            <NavLink href={`${base}/webhooks`}>
+              <Webhook className="h-4 w-4 shrink-0" />
+              Webhooks
             </NavLink>
           </div>
         </div>
