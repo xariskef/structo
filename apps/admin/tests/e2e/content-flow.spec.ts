@@ -131,9 +131,8 @@ test(
     });
     expect(res2.ok()).toBeTruthy();
     const list2 = await res2.json();
-    expect(list2.data[0].title).toBe(
+    expect(list2.data[0].title, "Draft edit must NOT change live Delivery API response").toBe(
       "Original title",
-      "Draft edit must NOT change live Delivery API response",
     );
 
     const single2 = await request.get(entryUrl, {
@@ -141,9 +140,8 @@ test(
     });
     expect(single2.ok()).toBeTruthy();
     const entry2 = await single2.json();
-    expect(entry2.title).toBe(
+    expect(entry2.title, "Single-entry endpoint must still return snapshot").toBe(
       "Original title",
-      "Single-entry endpoint must still return snapshot",
     );
 
     // ── 7. Republish → Delivery API should now return new content ────────
@@ -157,9 +155,8 @@ test(
     });
     expect(res3.ok()).toBeTruthy();
     const list3 = await res3.json();
-    expect(list3.data[0].title).toBe(
+    expect(list3.data[0].title, "After republish, Delivery API must return new title").toBe(
       "Draft-only title",
-      "After republish, Delivery API must return new title",
     );
 
     // ── 8. Unpublish → entry disappears from Delivery API ────────────────
@@ -171,17 +168,11 @@ test(
     });
     expect(res4.ok()).toBeTruthy();
     const list4 = await res4.json();
-    expect(list4.data).toHaveLength(
-      0,
-      "Unpublished entry must not appear in Delivery API",
-    );
+    expect(list4.data, "Unpublished entry must not appear in Delivery API").toHaveLength(0);
 
     const single4 = await request.get(entryUrl, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    expect(single4.status()).toBe(
-      404,
-      "Single-entry endpoint must return 404 after unpublish",
-    );
+    expect(single4.status(), "Single-entry endpoint must return 404 after unpublish").toBe(404);
   },
 );
