@@ -105,6 +105,25 @@ Phase 8.1 (operational visibility) added no migration. It reads the existing
 `organizationId`, `siteId`, `actorId` and `createdAt` support the activity-log
 listings.
 
+Per-site storage configuration (Phase 8.1 extension) also adds no migration.
+Credentials are stored as `SiteSetting` rows under the `storage.*` key
+namespace. The secret access key is encrypted with `STORAGE_ENCRYPTION_KEY`.
+Generate the key with:
+
+```bash
+openssl rand -hex 32
+```
+
+Add it to `.env` / `.env.local` and to the deployment secret store:
+
+```bash
+STORAGE_ENCRYPTION_KEY=<64 hex chars>   # required for per-site storage secrets
+```
+
+The platform-level R2 fallback (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`) is used when a site
+has no per-site configuration or when `STORAGE_ENCRYPTION_KEY` is absent.
+
 ## Neon Setup Checklist
 
 Before the first migration:

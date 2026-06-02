@@ -179,6 +179,23 @@ roles. Editors, authors and viewers cannot read activity logs.
   media base URL.
 - Add malware scanning later if deployment risk requires it.
 
+## Per-Site Storage Credentials
+
+- Storage credentials (R2 access key ID, secret access key, bucket, public URL)
+  are persisted as `SiteSetting` rows (no new table or migration).
+- The secret access key is encrypted at rest with AES-256-GCM using the
+  platform-level `STORAGE_ENCRYPTION_KEY` env var. Format: `v1:<iv>:<tag>:<data>`
+  (all base64 components).
+- The secret is **write-only**: the API never returns it. The `getStatus`
+  response includes only a `secretSet` boolean.
+- Saving credentials triggers a real test write to the bucket; invalid
+  credentials are rejected with `400 Bad Request` before anything is persisted.
+- Access is gated by the existing `site.manage_settings` permission.
+- Both `update` and `clear` are recorded as `site.storage.update` /
+  `site.storage.clear` audit events.
+- When `STORAGE_ENCRYPTION_KEY` is absent or decryption fails, the platform-level
+  R2 env fallback is used silently (a warning is logged).
+
 ## Logging
 
 - Record important management operations in audit logs.

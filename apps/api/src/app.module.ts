@@ -20,6 +20,7 @@ import { AuditLogsModule } from "./modules/audit-logs/audit-logs.module.js";
 import { DeliveryModule } from "./modules/delivery/delivery.module.js";
 import { MediaModule } from "./modules/media/media.module.js";
 import { PlatformModule } from "./modules/platform/platform.module.js";
+import { SiteStorageModule } from "./modules/site-storage/site-storage.module.js";
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { PlatformModule } from "./modules/platform/platform.module.js";
     ApiTokensModule,
     AuditLogsModule,
     DeliveryModule,
+    SiteStorageModule,
     MediaModule,
     PlatformModule,
   ],

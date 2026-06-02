@@ -87,8 +87,18 @@ Initial route groups:
 /sites/:siteId/api-tokens
 /sites/:siteId/media
 /sites/:siteId/media/:assetId
+/sites/:siteId/storage
 /sites/:siteId/audit-logs
 /invitations/accept
+```
+
+Site storage routes (`site.manage_settings` permission required):
+
+```text
+GET    /manage/sites/:siteId/storage   — return status (secretSet bool, never the key)
+PUT    /manage/sites/:siteId/storage   — save + validate credentials; omitting
+                                         secretAccessKey reuses the stored one
+DELETE /manage/sites/:siteId/storage   — clear per-site config, revert to fallback
 ```
 
 Management routes require an authenticated user session and authorization for

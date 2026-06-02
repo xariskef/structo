@@ -10,18 +10,18 @@ import {
   type MediaAssetSummary,
   type UpdateMediaAssetInput,
 } from "@structo/contracts";
-import { StorageProviderError, type StorageProvider } from "@structo/storage";
+import { StorageProviderError } from "@structo/storage";
 import { randomUUID } from "node:crypto";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { DatabaseService } from "../database/database.service.js";
+import { StorageResolver } from "../site-storage/storage-resolver.service.js";
 import {
   assertAllowedMediaFile,
   extensionForMimeType,
   readImageDimensions,
   type UploadedMediaFile,
 } from "./media-file.js";
-import { STORAGE_PROVIDER } from "./media.tokens.js";
 
 type MediaAssetRow = {
   id: string;
@@ -45,8 +45,8 @@ export class MediaService {
     private readonly db: DatabaseService,
     @Inject(AuthorizationService)
     private readonly authorizationService: AuthorizationService,
-    @Inject(STORAGE_PROVIDER)
-    private readonly storage: StorageProvider,
+    @Inject(StorageResolver)
+    private readonly storageResolver: StorageResolver,
   ) {}
 
   async list(userId: string, siteId: string): Promise<MediaAssetSummary[]> {
@@ -83,7 +83,8 @@ export class MediaService {
     const mimeType = assertAllowedMediaFile(file);
     const dimensions = readImageDimensions(file.buffer, mimeType);
     const storageKey = this.storageKey(siteId, extensionForMimeType(mimeType));
-    const stored = await this.storage
+    const storage = await this.storageResolver.getForSite(siteId);
+    const stored = await storage
       .putObject({ key: storageKey, body: file.buffer, contentType: mimeType })
       .catch((error: unknown) => this.throwStorageError(error));
 
@@ -122,7 +123,7 @@ export class MediaService {
       });
       return this.toSummary(asset);
     } catch (error: unknown) {
-      await this.storage.deleteObject(storageKey).catch(() => undefined);
+      await storage.deleteObject(storageKey).catch(() => undefined);
       throw error;
     }
   }
@@ -174,7 +175,8 @@ export class MediaService {
       this.findAsset(assetId, siteId),
     ]);
     await this.assertNotReferenced(siteId, asset.id);
-    await this.storage
+    const storage = await this.storageResolver.getForSite(siteId);
+    await storage
       .deleteObject(asset.storageKey)
       .catch((error: unknown) => this.throwStorageError(error));
     await this.db.client.$transaction([

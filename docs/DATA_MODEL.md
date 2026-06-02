@@ -205,6 +205,23 @@ overlapping settings model.
 Organization settings and platform settings can be added only when their scope
 is clearly distinct.
 
+#### Per-Site Storage Keys
+
+Storage configuration is stored as `SiteSetting` rows using the following
+reserved key names. No additional table or migration is required.
+
+```text
+storage.provider      — always "r2" when configured
+storage.accountId     — Cloudflare account ID
+storage.accessKeyId   — R2 access key ID
+storage.bucket        — R2 bucket name
+storage.publicBaseUrl — public R2 base URL (r2.dev or custom domain)
+storage.secret        — AES-256-GCM encrypted secret access key (write-only)
+```
+
+The `SettingsService` ignores these `storage.*` keys so they never leak
+through the general settings API.
+
 ## Content Modeling
 
 ### ContentType

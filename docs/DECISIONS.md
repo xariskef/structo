@@ -399,6 +399,19 @@ and content tables wherever possible.
 Visitor analytics remains explicitly out of scope and may be reconsidered later
 as a separate, privacy-reviewed decision.
 
+### D-126: Per-Site Storage Configuration
+
+Status: accepted.
+
+Each site can configure its own Cloudflare R2 bucket from the admin UI.
+Credentials are stored as `SiteSetting` rows (no new table or migration).
+The secret access key is encrypted at rest with AES-256-GCM using a
+platform-level `STORAGE_ENCRYPTION_KEY` env var. The secret is write-only
+(the API returns only a `secretSet` boolean). Saving validates credentials
+with a real test write before persisting. Falls back silently to the
+platform-level R2 env configuration when no per-site credentials exist or
+when decryption fails. Access is gated by `site.manage_settings`.
+
 ## Open Decisions
 
 ### Q-004: Analytics — RESOLVED

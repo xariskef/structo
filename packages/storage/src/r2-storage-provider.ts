@@ -73,6 +73,18 @@ export class R2StorageProvider implements StorageProvider {
   }
 }
 
+export function isR2EnvConfigured(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return Boolean(
+    env.R2_ACCOUNT_ID &&
+    env.R2_ACCESS_KEY_ID &&
+    env.R2_SECRET_ACCESS_KEY &&
+    env.R2_BUCKET &&
+    env.R2_PUBLIC_BASE_URL,
+  );
+}
+
 export function createR2StorageProviderFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): StorageProvider {
