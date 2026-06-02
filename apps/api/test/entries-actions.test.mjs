@@ -271,11 +271,13 @@ test("scheduled promotion creates a revision and an audit event", async () => {
           findUnique() {
             return {
               siteId: "site-a",
+              contentTypeVersionId: "version-2",
               title: "Hello",
               slug: "hello",
               excerpt: null,
               seoTitle: null,
               seoDescription: null,
+              publishedAt: new Date("2026-06-02T10:00:00.000Z"),
               data: { content: "<p>Hello</p>" },
               site: { organizationId: "org" },
               revisions: [{ revision: 2 }],
@@ -302,6 +304,11 @@ test("scheduled promotion creates a revision and an audit event", async () => {
   assert.equal(await service.promoteDueScheduled(), 1);
   assert.equal(revisionData.revision, 3);
   assert.equal(revisionData.status, "PUBLISHED");
+  assert.equal(revisionData.contentTypeVersionId, "version-2");
+  assert.equal(
+    revisionData.publishedAt.toISOString(),
+    "2026-06-02T10:00:00.000Z",
+  );
   assert.equal(revisionData.createdById, null);
   assert.equal(revisionData.title, "Hello");
   assert.equal(revisionData.slug, "hello");

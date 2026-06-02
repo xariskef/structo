@@ -83,6 +83,12 @@ export interface Entry {
 
 export type EntryList = List<Entry>;
 
+export interface PreviewSession {
+  siteKey: string;
+  entryId: string | null;
+  expiresAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Navigation menus
 // ---------------------------------------------------------------------------

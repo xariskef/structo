@@ -412,6 +412,25 @@ with a real test write before persisting. Falls back silently to the
 platform-level R2 env configuration when no per-site credentials exist or
 when decryption fails. Access is gated by `site.manage_settings`.
 
+### D-127: Snapshot Delivery And Opaque Preview Tokens
+
+Status: accepted.
+
+Treat `ContentEntry.publishedRevisionId` as the authoritative live-content
+pointer. A scheduled edit can change the working entry status while the previous
+revision remains live. Delivery sorting, timestamps, dynamic schema hydration
+and referenced menu item slugs resolve from the immutable revision.
+
+Preview tokens are random opaque `stp_` bearer credentials, not self-contained
+signed payloads. Persist only a SHA-256 hash and resolve the authoritative scope
+on every request so revocation remains immediate. Enforce a 24-hour maximum TTL,
+accept the token only in the Authorization header on CMS preview routes, and
+cascade-delete entry-scoped tokens when the entry is deleted.
+
+Storage public-URL validation is an outbound request boundary. Require HTTPS,
+reject local or private resolved addresses and redirects, and cap probes with a
+timeout.
+
 ## Open Decisions
 
 ### Q-004: Analytics — RESOLVED

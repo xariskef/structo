@@ -12,16 +12,15 @@ The first release focuses on a small, correct core:
 - Frontend applications consume published content through a delivery API.
 
 The public frontend is intentionally outside this repository for now. A starter
-theme and SDK can be added later as separate packages.
+theme can be added later as a separate package and consume the included SDK.
 
 ## Project Status
 
-Status: Phase 8.1 operational visibility is implemented. Organizations and
-sites have read-only activity logs, and Structo platform operators have a
-separate restricted console with system-wide counts, recent activity and a
-high-level health summary. Earlier phases — through the Phase 7 media library
-and the token-authenticated delivery API — remain in place. Analytics event
-ingestion is intentionally not started yet.
+Status: Phase 9.3 starter-theme stabilization is complete. The repository
+includes operational visibility, immutable published snapshots, short-lived
+draft-preview tokens and `@structo/sdk`. The corrective migrations are deployed
+and the expanded browser content-flow verification is passing. Analytics event
+ingestion remains intentionally deferred.
 
 The repository now includes owner registration, login, server-side sessions,
 organizations, sites, invitations, site settings, repeatable collections,
@@ -67,7 +66,7 @@ packages/
   field-kit/      Dynamic field registry, schemas and validation
   storage/        Storage interface and providers
   ui/             Shared administration UI components
-  sdk/            Frontend delivery API client, added later
+  sdk/            Frontend delivery API client
 ```
 
 ## Local Setup

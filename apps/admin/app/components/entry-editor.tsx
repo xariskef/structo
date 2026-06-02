@@ -102,6 +102,13 @@ export function EntryEditor({
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewCopied, setPreviewCopied] = useState(false);
   const [previewError, setPreviewError] = useState<string>();
+  const [previewDateRange] = useState(() => {
+    const now = new Date();
+    return {
+      min: now.toISOString().slice(0, 16),
+      max: new Date(now.getTime() + 86_400_000).toISOString().slice(0, 16),
+    };
+  });
 
   function applyEntry(e: EntryDetail) {
     setEntry(e);
@@ -257,11 +264,12 @@ export function EntryEditor({
           }),
         },
       );
-      const apiBase =
-        process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1";
-      setPreviewUrl(
-        `${apiBase}/preview/entries/${created.entryId}?preview=${created.token}`,
-      );
+      setPreviewUrl(created.previewUrl ?? created.token);
+      if (!created.previewUrl) {
+        setPreviewError(
+          "Configure the site's public base URL to generate a frontend Draft Mode link. The value shown is the raw token.",
+        );
+      }
       setPreviewLabel("");
       setPreviewExpiresAt("");
     } catch (e: unknown) {
@@ -314,7 +322,9 @@ export function EntryEditor({
   const fields = entry.fields as FieldDefinition[];
   const isArchived = entry.status === "ARCHIVED";
   const viewUrl =
-    entry.status === "PUBLISHED" ? publicUrl(publicBaseUrl, entry) : null;
+    entry.latestRevision !== null && !isArchived
+      ? publicUrl(publicBaseUrl, entry)
+      : null;
 
   return (
     <div>
@@ -471,7 +481,18 @@ export function EntryEditor({
                     {entry.status === "DRAFT" ? "Save draft" : "Save changes"}
                   </Button>
 
-                  {entry.status === "PUBLISHED" ? (
+                  <Button size="sm" onClick={publish} disabled={busy !== null}>
+                    <Send className="mr-1.5 h-3.5 w-3.5" />
+                    {busy === "publish"
+                      ? "Publishing…"
+                      : entry.latestRevision !== null
+                        ? "Republish now"
+                        : "Publish now"}
+                  </Button>
+
+                  {(entry.status === "PUBLISHED" ||
+                    (entry.status === "SCHEDULED" &&
+                      entry.latestRevision !== null)) && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -480,15 +501,6 @@ export function EntryEditor({
                     >
                       <EyeOff className="mr-1.5 h-3.5 w-3.5" />
                       {busy === "unpublish" ? "Unpublishing…" : "Unpublish"}
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={publish}
-                      disabled={busy !== null}
-                    >
-                      <Send className="mr-1.5 h-3.5 w-3.5" />
-                      {busy === "publish" ? "Publishing…" : "Publish now"}
                     </Button>
                   )}
 
@@ -611,7 +623,8 @@ export function EntryEditor({
                       onChange={(e) =>
                         setPreviewExpiresAt(e.currentTarget.value)
                       }
-                      min={new Date().toISOString().slice(0, 16)}
+                      min={previewDateRange.min}
+                      max={previewDateRange.max}
                       className="rounded-md border border-input bg-background px-2 py-1 text-xs"
                     />
                   </div>
@@ -619,9 +632,7 @@ export function EntryEditor({
                     size="sm"
                     variant="outline"
                     onClick={() => void generatePreviewToken()}
-                    disabled={
-                      previewBusy || !previewLabel || !previewExpiresAt
-                    }
+                    disabled={previewBusy || !previewLabel || !previewExpiresAt}
                   >
                     {previewBusy ? (
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

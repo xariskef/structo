@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "predev": "pnpm --filter @structo/database build",
     "dev": "tsx watch src/main.ts",
     "lint": "eslint src --max-warnings=0",
     "test": "tsc -p tsconfig.build.json && node --test",

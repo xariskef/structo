@@ -442,10 +442,13 @@ export class EntriesService {
       },
     );
 
+    const publishedAt = new Date();
+    const contentTypeVersionId = latest?.id ?? entry.contentTypeVersionId;
     await this.db.client.$transaction(async (tx) => {
       const revision = await tx.contentRevision.create({
         data: {
           entryId,
+          contentTypeVersionId,
           revision: nextRevision,
           data: this.toJson(data),
           status: "PUBLISHED",
@@ -454,6 +457,7 @@ export class EntriesService {
           excerpt: entry.excerpt,
           seoTitle: entry.seoTitle,
           seoDescription: entry.seoDescription,
+          publishedAt,
           createdById: userId,
           terms: {
             create: currentTerms.map(({ termId, term }) => ({
@@ -472,7 +476,7 @@ export class EntriesService {
         data: {
           data: this.toJson(data),
           status: "PUBLISHED",
-          publishedAt: new Date(),
+          publishedAt,
           publishedRevisionId: revision.id,
           ...(latest ? { contentTypeVersionId: latest.id } : {}),
           updatedById: userId,
@@ -518,7 +522,10 @@ export class EntriesService {
       throw new NotFoundException("Entry not found.");
     }
 
-    if (entry.status !== "PUBLISHED") {
+    if (
+      entry.status !== "PUBLISHED" &&
+      !(entry.status === "SCHEDULED" && entry.publishedRevisionId !== null)
+    ) {
       throw new BadRequestException(
         "Only published entries can be unpublished.",
       );
@@ -527,7 +534,11 @@ export class EntriesService {
     await this.db.client.$transaction([
       this.db.client.contentEntry.update({
         where: { id: entryId },
-        data: { status: "DRAFT", publishedRevisionId: null, updatedById: userId },
+        data: {
+          status: "DRAFT",
+          publishedRevisionId: null,
+          updatedById: userId,
+        },
       }),
       this.db.client.auditLog.create({
         data: {
@@ -580,7 +591,11 @@ export class EntriesService {
     await this.db.client.$transaction([
       this.db.client.contentEntry.update({
         where: { id: entryId },
-        data: { status: "ARCHIVED", updatedById: userId },
+        data: {
+          status: "ARCHIVED",
+          publishedRevisionId: null,
+          updatedById: userId,
+        },
       }),
       this.db.client.auditLog.create({
         data: {
@@ -862,11 +877,13 @@ export class EntriesService {
           where: { id },
           select: {
             siteId: true,
+            contentTypeVersionId: true,
             title: true,
             slug: true,
             excerpt: true,
             seoTitle: true,
             seoDescription: true,
+            publishedAt: true,
             data: true,
             site: { select: { organizationId: true } },
             revisions: {
@@ -889,6 +906,7 @@ export class EntriesService {
         const createdRevision = await transaction.contentRevision.create({
           data: {
             entryId: id,
+            contentTypeVersionId: entry.contentTypeVersionId,
             revision,
             data: this.toJson(this.toData(entry.data)),
             status: "PUBLISHED",
@@ -897,6 +915,7 @@ export class EntriesService {
             excerpt: entry.excerpt,
             seoTitle: entry.seoTitle,
             seoDescription: entry.seoDescription,
+            publishedAt: entry.publishedAt!,
             createdById: null,
             terms: {
               create: entry.taxonomyTerms.map(({ termId, term }) => ({

@@ -44,7 +44,7 @@ function makeDb(overrides = {}) {
   const site = {
     findUnique: async () => ({
       organizationId: "org-1",
-      key: "my-site",
+      settings: [{ value: "https://www.example.com" }],
     }),
   };
 
@@ -72,7 +72,11 @@ function makeDb(overrides = {}) {
 }
 
 function makeService(dbOverrides = {}) {
-  return new PreviewTokensService(makeDb(dbOverrides), authorization(), crypto());
+  return new PreviewTokensService(
+    makeDb(dbOverrides),
+    authorization(),
+    crypto(),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +98,10 @@ test("preview-tokens: create returns token + summary on success", async () => {
   });
   assert.equal(result.label, "My preview");
   assert.ok(result.token.startsWith("stp_"));
-  assert.ok(result.previewUrl.startsWith("/preview/"));
+  assert.ok(
+    result.previewUrl.startsWith("https://www.example.com/api/preview/enable"),
+  );
+  assert.ok(result.previewUrl.includes("token=stp_raw"));
 });
 
 test("preview-tokens: create throws BadRequestException when expiresAt is in the past", async () => {
@@ -102,6 +109,17 @@ test("preview-tokens: create throws BadRequestException when expiresAt is in the
   const svc = makeService();
   await assert.rejects(
     () => svc.create("user-1", "site-1", { label: "x", expiresAt: past }),
+    BadRequestException,
+  );
+});
+
+test("preview-tokens: create rejects expiry beyond 24 hours", async () => {
+  const future = new Date(
+    Date.now() + 24 * 60 * 60 * 1000 + 60_000,
+  ).toISOString();
+  const svc = makeService();
+  await assert.rejects(
+    () => svc.create("user-1", "site-1", { label: "x", expiresAt: future }),
     BadRequestException,
   );
 });
@@ -203,6 +221,7 @@ test("preview-tokens: resolve rejects expired token", async () => {
         entryId: null,
         expiresAt: new Date(Date.now() - 1000),
         revokedAt: null,
+        site: { key: "my-site" },
       }),
     },
   });
@@ -217,6 +236,7 @@ test("preview-tokens: resolve rejects revoked token", async () => {
         entryId: null,
         expiresAt: new Date(Date.now() + 86_400_000),
         revokedAt: new Date(),
+        site: { key: "my-site" },
       }),
     },
   });
@@ -231,10 +251,12 @@ test("preview-tokens: resolve returns siteId and entryId for valid token", async
         entryId: "entry-42",
         expiresAt: new Date(Date.now() + 86_400_000),
         revokedAt: null,
+        site: { key: "my-site" },
       }),
     },
   });
   const result = await svc.resolve("stp_valid");
   assert.equal(result.siteId, "site-1");
   assert.equal(result.entryId, "entry-42");
+  assert.equal(result.siteKey, "my-site");
 });

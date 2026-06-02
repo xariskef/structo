@@ -106,13 +106,13 @@ for (const entry of result.data) {
 
 **Options:**
 
-| Option     | Type     | Default              | Description                               |
-| ---------- | -------- | -------------------- | ----------------------------------------- |
-| `page`     | `number` | `1`                  | Page number                               |
-| `pageSize` | `number` | `20`                 | Items per page (max 100)                  |
-| `sort`     | `string` | `"publishedAt:desc"` | `publishedAt:asc/desc`, `title:asc/desc`  |
-| `category` | `string` | —                    | Filter by category slug                   |
-| `tag`      | `string` | —                    | Filter by tag slug                        |
+| Option     | Type     | Default              | Description                              |
+| ---------- | -------- | -------------------- | ---------------------------------------- |
+| `page`     | `number` | `1`                  | Page number                              |
+| `pageSize` | `number` | `20`                 | Items per page (max 100)                 |
+| `sort`     | `string` | `"publishedAt:desc"` | `publishedAt:asc/desc`, `title:asc/desc` |
+| `category` | `string` | —                    | Filter by category slug                  |
+| `tag`      | `string` | —                    | Filter by tag slug                       |
 
 ### `getEntry(typeSlug, entrySlug)`
 
@@ -152,6 +152,16 @@ in the client options.
 // Throws StructoAuthError synchronously if previewToken is not configured.
 const draft = await client.getEntryDraft("cm8abc123");
 console.log(draft.title); // latest unsaved or saved draft value
+```
+
+### `getPreviewSession()`
+
+Validates the configured preview token and returns its site and optional entry
+scope. Frontend Draft Mode enable routes must call this before setting cookies.
+
+```ts
+const session = await client.getPreviewSession();
+console.log(session.siteKey, session.entryId, session.expiresAt);
 ```
 
 ## Error handling
@@ -196,13 +206,13 @@ try {
 
 **Error codes:**
 
-| Class                   | `.code`              | Cause                                 |
-| ----------------------- | -------------------- | ------------------------------------- |
-| `StructoNetworkError`   | `"network_error"`    | `fetch()` threw                       |
-| `StructoAuthError`      | `"auth_error"`       | `401 Unauthorized`                    |
-| `StructoNotFoundError`  | `"not_found"`        | `404 Not Found`                       |
-| `StructoValidationError`| `"validation_error"` | `422 Unprocessable Entity`            |
-| `StructoHttpError`      | `"http_error"`       | Any other non-2xx response            |
+| Class                    | `.code`              | Cause                      |
+| ------------------------ | -------------------- | -------------------------- |
+| `StructoNetworkError`    | `"network_error"`    | `fetch()` threw            |
+| `StructoAuthError`       | `"auth_error"`       | `401 Unauthorized`         |
+| `StructoNotFoundError`   | `"not_found"`        | `404 Not Found`            |
+| `StructoValidationError` | `"validation_error"` | `422 Unprocessable Entity` |
+| `StructoHttpError`       | `"http_error"`       | Any other non-2xx response |
 
 ## Usage with Next.js App Router
 

@@ -268,6 +268,7 @@ model ContentTypeVersion {
 
   contentType ContentType    @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
   entries     ContentEntry[]
+  revisions   ContentRevision[]
 
   @@unique([contentTypeId, version])
   @@index([contentTypeId])
@@ -397,25 +398,29 @@ model ContentEntryTaxonomyTerm {
 }
 
 model ContentRevision {
-  id             String             @id @default(cuid())
-  entryId        String
-  revision       Int
-  data           Json
-  status         ContentEntryStatus
-  title          String             @default("")
-  slug           String             @default("")
-  excerpt        String?
-  seoTitle       String?
-  seoDescription String?
-  createdById    String?
-  createdAt      DateTime           @default(now())
+  id                   String             @id @default(cuid())
+  entryId              String
+  contentTypeVersionId String
+  revision             Int
+  data                 Json
+  status               ContentEntryStatus
+  title                String             @default("")
+  slug                 String             @default("")
+  excerpt              String?
+  seoTitle             String?
+  seoDescription       String?
+  publishedAt          DateTime
+  createdById          String?
+  createdAt            DateTime           @default(now())
 
-  entry       ContentEntry             @relation("EntryRevisions", fields: [entryId], references: [id], onDelete: Cascade)
-  publishedBy ContentEntry?            @relation("EntryPublishedRevision")
-  terms       RevisionTaxonomyTerm[]
+  entry              ContentEntry             @relation("EntryRevisions", fields: [entryId], references: [id], onDelete: Cascade)
+  contentTypeVersion ContentTypeVersion        @relation(fields: [contentTypeVersionId], references: [id])
+  publishedBy        ContentEntry?            @relation("EntryPublishedRevision")
+  terms              RevisionTaxonomyTerm[]
 
   @@unique([entryId, revision])
   @@index([entryId])
+  @@index([contentTypeVersionId])
 }
 
 model RevisionTaxonomyTerm {
@@ -499,7 +504,7 @@ model PreviewToken {
   createdAt   DateTime  @default(now())
 
   site        Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  entry       ContentEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  entry       ContentEntry? @relation(fields: [entryId], references: [id], onDelete: Cascade)
   createdBy   User?         @relation("PreviewTokenCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([siteId])

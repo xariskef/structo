@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { DatabaseService } from "../database/database.service.js";
+import { assertSafePublicBaseUrl } from "./public-url-policy.js";
 import { encryptSecret, loadStorageEncryptionKey } from "./secret-cipher.js";
 import { STORAGE_SETTING_KEYS } from "./site-storage.tokens.js";
 import {
@@ -183,6 +184,7 @@ export class SiteStorageService {
         "publicBaseUrl must be a public-facing URL, not the R2 S3 API endpoint.",
       );
     }
+    await assertSafePublicBaseUrl(config.publicBaseUrl);
 
     const provider = this.storageResolver.buildProvider(config);
     const key = `sites/${siteId}/.structo-storage-check-${randomUUID()}`;
@@ -202,7 +204,11 @@ export class SiteStorageService {
     // URLs are caught during setup rather than at delivery time.
     const probeUrl = `${config.publicBaseUrl.replace(/\/$/, "")}/${key}`;
     try {
-      const res = await fetch(probeUrl, { method: "HEAD" });
+      const res = await fetch(probeUrl, {
+        method: "HEAD",
+        redirect: "manual",
+        signal: AbortSignal.timeout(10_000),
+      });
       if (!res.ok) {
         await provider.deleteObject(key).catch(() => undefined);
         throw new BadRequestException(

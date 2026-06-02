@@ -52,6 +52,9 @@ function publishedEntry() {
       excerpt: null,
       seoTitle: null,
       seoDescription: null,
+      publishedAt: new Date("2026-06-01T10:00:00.000Z"),
+      createdAt: new Date("2026-06-01T10:00:00.000Z"),
+      contentTypeVersion: { fields: [] },
       terms: [{ kind: "CATEGORY", name: "News", slug: "news" }],
     },
   };
@@ -68,6 +71,7 @@ test("delivery OpenAPI document is generated as OpenAPI 3.1", () => {
 
 test("delivery lists published entries with pagination and taxonomy filters", async () => {
   let capturedWhere;
+  let capturedOrderBy;
   const client = {
     contentType: {
       findFirst() {
@@ -75,8 +79,9 @@ test("delivery lists published entries with pagination and taxonomy filters", as
       },
     },
     contentEntry: {
-      findMany({ where }) {
+      findMany({ where, orderBy }) {
         capturedWhere = where;
+        capturedOrderBy = orderBy;
         return [publishedEntry()];
       },
       count() {
@@ -97,7 +102,11 @@ test("delivery lists published entries with pagination and taxonomy filters", as
     tag: "featured",
   });
 
-  assert.equal(capturedWhere.status, "PUBLISHED");
+  assert.equal(capturedWhere.status, undefined);
+  assert.deepEqual(capturedWhere.publishedRevisionId, { not: null });
+  assert.deepEqual(capturedOrderBy, {
+    publishedRevision: { title: "asc" },
+  });
   assert.equal(
     capturedWhere.AND[0].publishedRevision.terms.some.kind,
     "CATEGORY",
@@ -144,6 +153,18 @@ test("delivery sanitizes declared rich-text fields before returning entries", as
             data: {
               content: '<p onclick="bad()">Safe<script>bad()</script></p>',
             },
+            contentTypeVersion: {
+              fields: [
+                {
+                  id: "content",
+                  type: "richText",
+                  key: "content",
+                  label: "Content",
+                  required: true,
+                  config: {},
+                },
+              ],
+            },
           },
         };
       },
@@ -186,6 +207,18 @@ test("delivery expands media ids into public media objects", async () => {
           publishedRevision: {
             ...publishedEntry().publishedRevision,
             data: { hero: "asset-a" },
+            contentTypeVersion: {
+              fields: [
+                {
+                  id: "hero",
+                  type: "media",
+                  key: "hero",
+                  label: "Hero",
+                  required: false,
+                  config: {},
+                },
+              ],
+            },
           },
         };
       },
@@ -467,6 +500,9 @@ test("delivery returns snapshot data — not the live draft — after entry is e
             excerpt: null,
             seoTitle: null,
             seoDescription: null,
+            publishedAt: new Date("2026-06-01T10:00:00.000Z"),
+            createdAt: new Date("2026-06-01T10:00:00.000Z"),
+            contentTypeVersion: { fields: [] },
             terms: [],
           },
         };
@@ -488,6 +524,49 @@ test("delivery returns snapshot data — not the live draft — after entry is e
     draftData,
     "draft data must not leak into delivery response",
   );
+  assert.equal(
+    entry.updatedAt,
+    "2026-06-01T10:00:00.000Z",
+    "updatedAt must come from the snapshot, not the draft",
+  );
+});
+
+test("delivery menu item URLs use the published snapshot slug", async () => {
+  let capturedWhere;
+  const client = {
+    navigationMenu: {
+      findUnique() {
+        return {
+          key: "main",
+          name: "Main",
+          items: [
+            {
+              label: "Hello",
+              url: "/fallback",
+              target: "_self",
+              reference: { kind: "collectionItem", id: "entry-1" },
+            },
+          ],
+        };
+      },
+    },
+    contentEntry: {
+      findFirst({ where }) {
+        capturedWhere = where;
+        return {
+          contentType: { slug: "articles" },
+          publishedRevision: { slug: "published-slug" },
+        };
+      },
+    },
+  };
+
+  const service = new DeliveryService({ client });
+  const menu = await service.getMenu("site-a", "main");
+
+  assert.deepEqual(capturedWhere.publishedRevisionId, { not: null });
+  assert.equal(capturedWhere.status, undefined);
+  assert.equal(menu.items[0].url, "/articles/published-slug");
 });
 
 test("delivery returns null for entry with no published revision", async () => {

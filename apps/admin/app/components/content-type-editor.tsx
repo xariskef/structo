@@ -112,6 +112,7 @@ function FieldRow({
   onUpdate,
   onDelete,
   onMove,
+  depth = 1,
 }: {
   field: FieldDefinition;
   index: number;
@@ -119,6 +120,7 @@ function FieldRow({
   onUpdate: (updated: FieldDefinition) => void;
   onDelete: () => void;
   onMove: (direction: "up" | "down") => void;
+  depth?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const keyRef = useRef<HTMLInputElement>(null);
@@ -270,7 +272,11 @@ function FieldRow({
 
           {/* Nested fields for group / repeater */}
           {isNestedField(field.type) && (
-            <NestedFieldsEditor field={field} onUpdate={onUpdate} />
+            <NestedFieldsEditor
+              field={field}
+              onUpdate={onUpdate}
+              depth={depth}
+            />
           )}
         </div>
       )}
@@ -349,9 +355,11 @@ function SelectOptionsEditor({
 function NestedFieldsEditor({
   field,
   onUpdate,
+  depth,
 }: {
   field: FieldDefinition;
   onUpdate: (f: FieldDefinition) => void;
+  depth: number;
 }) {
   const config = (field.config ?? {}) as { fields?: FieldDefinition[] };
   const nested = config.fields ?? [];
@@ -361,35 +369,49 @@ function NestedFieldsEditor({
     onUpdate({ ...field, config: { ...config, fields: next } });
   }
 
+  function moveNested(index: number, direction: "up" | "down") {
+    const next = [...nested];
+    const swap = direction === "up" ? index - 1 : index + 1;
+    if (swap < 0 || swap >= next.length) return;
+    [next[index], next[swap]] = [next[swap]!, next[index]!];
+    setNested(next);
+  }
+
   return (
     <div className="grid gap-2">
       <Label className="text-xs">Nested fields</Label>
       {nested.map((nf, i) => (
-        <div
+        <FieldRow
           key={nf.id}
-          className="flex items-center gap-2 rounded border border-border px-3 py-2 text-sm"
-        >
-          <span className="flex-1 truncate font-medium">{nf.label}</span>
-          <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-            {nf.key}
-          </span>
-          <button
-            type="button"
-            onClick={() => setNested(nested.filter((_, j) => j !== i))}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
+          field={nf}
+          index={i}
+          total={nested.length}
+          depth={depth + 1}
+          onUpdate={(updated) =>
+            setNested(
+              nested.map((candidate, index) =>
+                index === i ? updated : candidate,
+              ),
+            )
+          }
+          onDelete={() => setNested(nested.filter((_, index) => index !== i))}
+          onMove={(direction) => moveNested(i, direction)}
+        />
       ))}
 
-      {showPicker ? (
+      {depth >= 5 ? (
+        <p className="text-xs text-muted-foreground">
+          Maximum nesting depth reached.
+        </p>
+      ) : showPicker ? (
         <div className="rounded-md border border-border bg-muted/30 p-3">
           <p className="mb-2 text-xs font-semibold text-muted-foreground">
             Add nested field
           </p>
           <div className="grid grid-cols-3 gap-1.5">
-            {FIELD_TYPES.filter((t) => !isNestedField(t)).map((type) => (
+            {FIELD_TYPES.filter(
+              (type) => depth < 4 || !isNestedField(type),
+            ).map((type) => (
               <button
                 key={type}
                 type="button"

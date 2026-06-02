@@ -84,7 +84,7 @@ const SAMPLE_INPUT = {
   accessKeyId: "key-id-1",
   secretAccessKey: "secret-value",
   bucket: "my-bucket",
-  publicBaseUrl: "https://pub.example.com",
+  publicBaseUrl: "https://1.1.1.1",
 };
 
 /** Stubs globalThis.fetch to return HTTP 200 for the duration of the callback. */
@@ -171,7 +171,7 @@ test("update reuses the stored secret when the client omits it", async () => {
         accessKeyId: "key-id-1",
         secretAccessKey: "existing-secret",
         bucket: "my-bucket",
-        publicBaseUrl: "https://pub.example.com",
+        publicBaseUrl: "https://1.1.1.1",
       });
     },
   });
@@ -180,7 +180,9 @@ test("update reuses the stored secret when the client omits it", async () => {
 
   // Omit secretAccessKey from the input.
   const { secretAccessKey: _omitted, ...inputWithoutSecret } = SAMPLE_INPUT;
-  await withFetchOk(() => service.update("user-a", "site-a", inputWithoutSecret));
+  await withFetchOk(() =>
+    service.update("user-a", "site-a", inputWithoutSecret),
+  );
 
   const secretUpsert = upserts.find(
     (u) => u.where.siteId_key.key === STORAGE_SETTING_KEYS.secret,

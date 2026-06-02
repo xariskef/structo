@@ -16,6 +16,7 @@ import { DatabaseService } from "../database/database.service.js";
 
 /** Raw token prefix — distinguishes preview tokens from delivery (stk_) tokens. */
 const PREFIX = "stp_";
+const MAX_TTL_MS = 24 * 60 * 60 * 1000;
 
 type TokenRow = {
   id: string;
@@ -47,12 +48,12 @@ export class PreviewTokensService {
       siteId,
       "site.manage_preview_tokens",
     );
-    const site = await this.findSite(siteId);
+    await this.findSite(siteId);
     const tokens = await this.db.client.previewToken.findMany({
       where: { siteId },
       orderBy: { createdAt: "desc" },
     });
-    return tokens.map((t) => this.toSummary(t, siteId, site.key));
+    return tokens.map((t) => this.toSummary(t));
   }
 
   async create(
@@ -69,7 +70,14 @@ export class PreviewTokensService {
 
     const expiresAt = new Date(input.expiresAt);
     if (expiresAt <= new Date()) {
-      throw new BadRequestException("Preview token expiry must be in the future.");
+      throw new BadRequestException(
+        "Preview token expiry must be in the future.",
+      );
+    }
+    if (expiresAt.getTime() > Date.now() + MAX_TTL_MS) {
+      throw new BadRequestException(
+        "Preview token expiry must be no more than 24 hours in the future.",
+      );
     }
 
     // Validate entry scope if provided
@@ -112,16 +120,17 @@ export class PreviewTokensService {
     });
 
     return {
-      ...this.toSummary(created, siteId, site.key),
+      ...this.toSummary(created),
+      previewUrl: this.buildPreviewUrl(
+        site.publicBaseUrl,
+        rawToken,
+        created.entryId,
+      ),
       token: rawToken,
     };
   }
 
-  async revoke(
-    userId: string,
-    siteId: string,
-    tokenId: string,
-  ): Promise<void> {
+  async revoke(userId: string, siteId: string, tokenId: string): Promise<void> {
     await this.authorizationService.assertSitePermission(
       userId,
       siteId,
@@ -166,9 +175,12 @@ export class PreviewTokensService {
    * Resolve a raw preview token string into its resolved site + optional entry
    * scope. Called by `PreviewTokenGuard`.
    */
-  async resolve(
-    rawToken: string,
-  ): Promise<{ siteId: string; entryId: string | null }> {
+  async resolve(rawToken: string): Promise<{
+    siteId: string;
+    siteKey: string;
+    entryId: string | null;
+    expiresAt: Date;
+  }> {
     if (!rawToken.startsWith(PREFIX)) {
       throw new NotFoundException("Preview token not found.");
     }
@@ -180,16 +192,18 @@ export class PreviewTokensService {
         entryId: true,
         expiresAt: true,
         revokedAt: true,
+        site: { select: { key: true } },
       },
     });
-    if (
-      !token ||
-      token.revokedAt !== null ||
-      token.expiresAt <= new Date()
-    ) {
+    if (!token || token.revokedAt !== null || token.expiresAt <= new Date()) {
       throw new NotFoundException("Preview token not found.");
     }
-    return { siteId: token.siteId, entryId: token.entryId };
+    return {
+      siteId: token.siteId,
+      siteKey: token.site.key,
+      entryId: token.entryId,
+      expiresAt: token.expiresAt,
+    };
   }
 
   // -------------------------------------------------------------------------
@@ -198,20 +212,26 @@ export class PreviewTokensService {
 
   private async findSite(
     siteId: string,
-  ): Promise<{ organizationId: string; key: string }> {
+  ): Promise<{ organizationId: string; publicBaseUrl: string | null }> {
     const site = await this.db.client.site.findUnique({
       where: { id: siteId },
-      select: { organizationId: true, key: true },
+      select: {
+        organizationId: true,
+        settings: {
+          where: { key: "publicBaseUrl" },
+          select: { value: true },
+          take: 1,
+        },
+      },
     });
     if (!site) throw new NotFoundException("Site not found.");
-    return site;
+    return {
+      organizationId: site.organizationId,
+      publicBaseUrl: site.settings[0]?.value ?? null,
+    };
   }
 
-  private toSummary(
-    token: TokenRow,
-    siteId: string,
-    siteKey: string,
-  ): PreviewTokenSummary {
+  private toSummary(token: TokenRow): PreviewTokenSummary {
     // The summary does not include the raw token — only the created response
     // extends this with the one-time `token` field.
     return {
@@ -221,18 +241,24 @@ export class PreviewTokensService {
       expiresAt: token.expiresAt.toISOString(),
       revokedAt: token.revokedAt?.toISOString() ?? null,
       createdAt: token.createdAt.toISOString(),
-      previewUrl: this.buildPreviewUrl(siteKey, token.entryId),
+      previewUrl: null,
     };
   }
 
   /**
-   * Returns the base URL that a consumer can append `?preview=<token>` to.
-   * The admin frontend or SDK substitutes the actual token value.
-   * Format: `/preview/<siteKey>[/<entryId>]`
+   * Returns the external frontend Draft Mode bridge URL shown once at token
+   * creation. The raw token is never reconstructed for list responses.
    */
-  private buildPreviewUrl(siteKey: string, entryId: string | null): string {
-    return entryId
-      ? `/preview/${siteKey}/entries/${entryId}`
-      : `/preview/${siteKey}`;
+  private buildPreviewUrl(
+    publicBaseUrl: string | null,
+    rawToken: string,
+    entryId: string | null,
+  ): string | null {
+    if (!publicBaseUrl) return null;
+
+    const url = new URL("/api/preview/enable", publicBaseUrl);
+    url.searchParams.set("token", rawToken);
+    if (entryId) url.searchParams.set("entryId", entryId);
+    return url.toString();
   }
 }

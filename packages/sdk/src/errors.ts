@@ -19,13 +19,19 @@ export class StructoError extends Error {
  * (e.g. DNS failure, connection refused, timeout).
  */
 export class StructoNetworkError extends StructoError {
-  override readonly cause: unknown;
-
   constructor(message: string, cause?: unknown) {
     super(message, "NETWORK_ERROR");
     this.name = "StructoNetworkError";
-    this.cause = cause;
+    Object.defineProperty(this, "cause", {
+      value: cause,
+      enumerable: false,
+      configurable: true,
+    });
   }
+}
+
+export interface StructoNetworkError {
+  readonly cause: unknown;
 }
 
 /**
@@ -45,10 +51,7 @@ export class StructoAuthError extends StructoError {
 export class StructoValidationError extends StructoError {
   readonly details: { field?: string; message: string }[];
 
-  constructor(
-    message: string,
-    details: { field?: string; message: string }[],
-  ) {
+  constructor(message: string, details: { field?: string; message: string }[]) {
     super(message, "VALIDATION_ERROR");
     this.name = "StructoValidationError";
     this.details = details;

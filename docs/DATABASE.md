@@ -100,6 +100,13 @@ editorial metadata and scheduling, and scoped versioned taxonomies with dynamic
 term fields, nested navigation menus, hashed site delivery API tokens and
 site-scoped media metadata.
 
+Phase 9 stabilization adds corrective migrations:
+
+- `20260602220000_stabilize_preview_token_scope` changes entry-scoped preview
+  tokens to cascade on entry deletion so their scope cannot widen.
+- `20260602221000_complete_published_snapshot` stores the content-type version
+  and publication timestamp on every immutable content revision.
+
 Phase 8.1 (operational visibility) added no migration. It reads the existing
 `AuditLog` and `PlatformOperatorAccess` tables; the `AuditLog` indexes on
 `organizationId`, `siteId`, `actorId` and `createdAt` support the activity-log

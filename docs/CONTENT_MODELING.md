@@ -240,6 +240,10 @@ Implemented tools:
 
 The administration UI must not be the only validation layer.
 
+Groups and repeaters are recursively configurable in the structure editor.
+Nesting is capped at five levels in both the UI and server-side activation
+validation so schemas remain understandable and rendering work stays bounded.
+
 ## Versioning Rules
 
 - Draft schema edits can change freely before activation.

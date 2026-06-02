@@ -11,12 +11,14 @@ import { PreviewTokensService } from "./preview-tokens.service.js";
 
 export interface PreviewRequest extends Request {
   previewSiteId?: string;
+  previewSiteKey?: string;
   previewEntryId?: string | null;
+  previewExpiresAt?: Date;
 }
 
 /**
  * Guard for draft-preview delivery routes.
- * Expects the raw token in the `preview` query parameter.
+ * Expects the raw token in the Authorization Bearer header.
  * On success it injects `previewSiteId` and `previewEntryId` onto the request.
  */
 @Injectable()
@@ -28,10 +30,10 @@ export class PreviewTokenGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<PreviewRequest>();
-    const rawToken =
-      typeof request.query["preview"] === "string"
-        ? request.query["preview"]
-        : undefined;
+    const authorization = request.headers.authorization;
+    const rawToken = authorization?.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length)
+      : undefined;
 
     if (!rawToken) {
       throw new NotFoundException("Preview token required.");
@@ -51,7 +53,9 @@ export class PreviewTokenGuard implements CanActivate {
     }
 
     request.previewSiteId = resolved.siteId;
+    request.previewSiteKey = resolved.siteKey;
     request.previewEntryId = resolved.entryId;
+    request.previewExpiresAt = resolved.expiresAt;
     return true;
   }
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createRequire } from "node:module";
 
 import {
   StructoAuthError,
@@ -150,13 +151,39 @@ describe("StructoClient happy paths", () => {
     expect(url).toContain("/navigation-menus/main");
   });
 
-  it("getEntryDraft uses /preview/entries path with token", async () => {
+  it("getEntryDraft uses /preview/entries path with bearer token", async () => {
     const fetch = makeFetch(200, { title: "Draft" });
     const client = makeClient(fetch, "stp_secret");
     await client.getEntryDraft("entry-42");
     const url = (fetch.mock.calls[0]?.[0] as string) ?? "";
     expect(url).toContain("/preview/entries/entry-42");
-    expect(url).toContain("preview=stp_secret");
+    expect(url).not.toContain("preview=");
+    const init = fetch.mock.calls[0]?.[1] as RequestInit;
+    expect((init.headers as Record<string, string>)["Authorization"]).toBe(
+      "Bearer stp_secret",
+    );
+  });
+
+  it("getPreviewSession validates the configured bearer token", async () => {
+    const fetch = makeFetch(200, { siteKey: "test-site", entryId: null });
+    const client = makeClient(fetch, "stp_secret");
+    await client.getPreviewSession();
+    const url = (fetch.mock.calls[0]?.[0] as string) ?? "";
+    expect(url).toContain("/preview/session");
+    const init = fetch.mock.calls[0]?.[1] as RequestInit;
+    expect((init.headers as Record<string, string>)["Authorization"]).toBe(
+      "Bearer stp_secret",
+    );
+  });
+
+  it("encodes path segments", async () => {
+    const fetch = makeFetch(200, {});
+    const client = makeClient(fetch);
+    await client.getEntry("articles/news", "hello world");
+    const url = (fetch.mock.calls[0]?.[0] as string) ?? "";
+    expect(url).toContain(
+      "/content-types/articles%2Fnews/entries/hello%20world",
+    );
   });
 
   it("sends Authorization header", async () => {
@@ -184,13 +211,21 @@ describe("StructoClient error handling", () => {
   });
 
   it("throws StructoAuthError on 401", async () => {
-    const fetch = makeFetch(401, { error: { message: "Unauthorized", code: "UNAUTHORIZED", details: [] } }, false);
+    const fetch = makeFetch(
+      401,
+      { error: { message: "Unauthorized", code: "UNAUTHORIZED", details: [] } },
+      false,
+    );
     const client = makeClient(fetch);
     await expect(client.getSettings()).rejects.toBeInstanceOf(StructoAuthError);
   });
 
   it("throws StructoNotFoundError on 404", async () => {
-    const fetch = makeFetch(404, { error: { message: "Not found", code: "NOT_FOUND", details: [] } }, false);
+    const fetch = makeFetch(
+      404,
+      { error: { message: "Not found", code: "NOT_FOUND", details: [] } },
+      false,
+    );
     const client = makeClient(fetch);
     await expect(client.getEntry("articles", "missing")).rejects.toBeInstanceOf(
       StructoNotFoundError,
@@ -216,7 +251,17 @@ describe("StructoClient error handling", () => {
   });
 
   it("throws StructoHttpError for generic non-2xx", async () => {
-    const fetch = makeFetch(503, { error: { message: "Service unavailable", code: "SERVER_ERROR", details: [] } }, false);
+    const fetch = makeFetch(
+      503,
+      {
+        error: {
+          message: "Service unavailable",
+          code: "SERVER_ERROR",
+          details: [],
+        },
+      },
+      false,
+    );
     const client = makeClient(fetch);
     const error = await client.getSettings().catch((e) => e);
     expect(error).toBeInstanceOf(StructoHttpError);
@@ -250,5 +295,18 @@ describe("Package exports", () => {
     expect(StructoValidationError).toBeDefined();
     expect(StructoNotFoundError).toBeDefined();
     expect(StructoHttpError).toBeDefined();
+  });
+
+  it("loads the built ESM export", async () => {
+    const esm = await import("../dist/index.js");
+    expect(esm.StructoClient).toBeDefined();
+  });
+
+  it("loads the built CJS export", () => {
+    const require = createRequire(import.meta.url);
+    const cjs = require("../dist/index.cjs") as {
+      StructoClient?: typeof StructoClient;
+    };
+    expect(cjs.StructoClient).toBeDefined();
   });
 });

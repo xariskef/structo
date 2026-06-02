@@ -88,6 +88,7 @@ Initial route groups:
 /sites/:siteId/media
 /sites/:siteId/media/:assetId
 /sites/:siteId/storage
+/sites/:siteId/preview-tokens
 /sites/:siteId/audit-logs
 /invitations/accept
 ```
@@ -100,6 +101,21 @@ PUT    /manage/sites/:siteId/storage   — save + validate credentials; omitting
                                          secretAccessKey reuses the stored one
 DELETE /manage/sites/:siteId/storage   — clear per-site config, revert to fallback
 ```
+
+Preview routes:
+
+```text
+GET    /manage/sites/:siteId/preview-tokens            — list token summaries
+POST   /manage/sites/:siteId/preview-tokens            — reveal raw token and
+                                                         frontend Draft Mode URL once
+DELETE /manage/sites/:siteId/preview-tokens/:tokenId   — revoke token
+GET    /preview/session                                — validate bearer token scope
+GET    /preview/entries/:entryId                       — return live draft content
+```
+
+Preview delivery routes require an `stp_` bearer token. They never accept raw
+tokens in CMS query strings. Tokens are site-scoped and may optionally narrow
+access to one entry.
 
 Management routes require an authenticated user session and authorization for
 the requested organization or site.
@@ -264,4 +280,3 @@ User session
 ## Deferred Delivery Questions
 
 - Should a site optionally allow public delivery without a token?
-- Should scoped preview tokens be added after publishing?

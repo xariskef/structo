@@ -190,11 +190,25 @@ roles. Editors, authors and viewers cannot read activity logs.
   response includes only a `secretSet` boolean.
 - Saving credentials triggers a real test write to the bucket; invalid
   credentials are rejected with `400 Bad Request` before anything is persisted.
+- Public URL probes require HTTPS, reject credentials, custom ports, private or
+  local resolved addresses and redirects, and stop after a 10-second timeout.
 - Access is gated by the existing `site.manage_settings` permission.
 - Both `update` and `clear` are recorded as `site.storage.update` /
   `site.storage.clear` audit events.
 - When `STORAGE_ENCRYPTION_KEY` is absent or decryption fails, the platform-level
   R2 env fallback is used silently (a warning is logged).
+
+## Preview Tokens
+
+- Preview tokens are random `stp_` bearer credentials. Only their SHA-256 hashes
+  are stored. The raw token and frontend Draft Mode URL are revealed once.
+- Tokens expire within 24 hours, can be revoked, are scoped to one site and may
+  be narrowed to one entry.
+- Deleting an entry cascade-deletes its entry-scoped tokens. A deleted scope
+  must never widen into site-level access.
+- CMS preview routes accept the token only through the Authorization bearer
+  header. The frontend bridge validates `/preview/session`, stores the token in
+  an HttpOnly cookie and redirects away from the initial token-bearing URL.
 
 ## Logging
 

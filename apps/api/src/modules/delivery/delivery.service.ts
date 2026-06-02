@@ -91,7 +91,6 @@ export class DeliveryService {
     const where = {
       siteId,
       contentTypeId: contentType.id,
-      status: "PUBLISHED" as const,
       publishedRevisionId: { not: null as null },
       AND: [
         ...(query.category
@@ -120,7 +119,12 @@ export class DeliveryService {
       this.db.client.contentEntry.findMany({
         where,
         include: {
-          publishedRevision: { include: { terms: true } },
+          publishedRevision: {
+            include: {
+              terms: true,
+              contentTypeVersion: { select: { fields: true } },
+            },
+          },
         },
         orderBy: this.toOrderBy(query.sort),
         skip: (query.page - 1) * query.pageSize,
@@ -130,14 +134,7 @@ export class DeliveryService {
     ]);
     return {
       data: await Promise.all(
-        entries.map((entry) =>
-          this.toEntry(
-            siteId,
-            contentType.slug,
-            contentType.versions[0]?.fields,
-            entry,
-          ),
-        ),
+        entries.map((entry) => this.toEntry(siteId, contentType.slug, entry)),
       ),
       meta: {
         page: query.page,
@@ -158,18 +155,20 @@ export class DeliveryService {
       where: {
         siteId,
         contentTypeId: contentType.id,
-        status: "PUBLISHED",
+        publishedRevisionId: { not: null },
         publishedRevision: { slug: entrySlug },
       },
-      include: { publishedRevision: { include: { terms: true } } },
+      include: {
+        publishedRevision: {
+          include: {
+            terms: true,
+            contentTypeVersion: { select: { fields: true } },
+          },
+        },
+      },
     });
     if (!entry) throw new NotFoundException("Entry not found.");
-    return this.toEntry(
-      siteId,
-      contentType.slug,
-      contentType.versions[0]?.fields,
-      entry,
-    );
+    return this.toEntry(siteId, contentType.slug, entry);
   }
 
   async listMenus(siteId: string): Promise<DeliveryMenu[]> {
@@ -190,10 +189,7 @@ export class DeliveryService {
    * Return the live draft of a single entry regardless of publish state.
    * Only available behind a valid preview token — never on the public delivery path.
    */
-  async getEntryDraft(
-    siteId: string,
-    entryId: string,
-  ): Promise<DeliveryEntry> {
+  async getEntryDraft(siteId: string, entryId: string): Promise<DeliveryEntry> {
     const entry = await this.db.client.contentEntry.findUnique({
       where: { id: entryId },
       include: {
@@ -207,7 +203,9 @@ export class DeliveryService {
           },
         },
         publishedRevision: { include: { terms: true } },
-        taxonomyTerms: { include: { term: { select: { kind: true, name: true, slug: true } } } },
+        taxonomyTerms: {
+          include: { term: { select: { kind: true, name: true, slug: true } } },
+        },
       },
     });
     if (!entry || entry.siteId !== siteId) {
@@ -282,10 +280,7 @@ export class DeliveryService {
   private async toEntry(
     siteId: string,
     contentTypeSlug: string,
-    fields: unknown,
     entry: {
-      publishedAt: Date | null;
-      updatedAt: Date;
       publishedRevision: {
         title: string;
         slug: string;
@@ -293,6 +288,9 @@ export class DeliveryService {
         excerpt: string | null;
         seoTitle: string | null;
         seoDescription: string | null;
+        publishedAt: Date;
+        createdAt: Date;
+        contentTypeVersion: { fields: unknown };
         terms: { kind: string; name: string; slug: string }[];
       } | null;
     },
@@ -305,12 +303,16 @@ export class DeliveryService {
       contentTypeSlug,
       title: snap.title,
       slug: snap.slug,
-      data: await this.renderData(siteId, fields, snap.data),
+      data: await this.renderData(
+        siteId,
+        snap.contentTypeVersion.fields,
+        snap.data,
+      ),
       excerpt: snap.excerpt,
       seoTitle: snap.seoTitle,
       seoDescription: snap.seoDescription,
-      publishedAt: entry.publishedAt?.toISOString() ?? null,
-      updatedAt: entry.updatedAt.toISOString(),
+      publishedAt: snap.publishedAt.toISOString(),
+      updatedAt: snap.createdAt.toISOString(),
       terms: snap.terms.map((t) => ({
         kind: t.kind as "CATEGORY" | "TAG",
         name: t.name,
@@ -433,10 +435,19 @@ export class DeliveryService {
       return contentType ? `/${contentType.slug}` : item.url;
     }
     const entry = await this.db.client.contentEntry.findFirst({
-      where: { id: item.reference.id, siteId, status: "PUBLISHED" },
-      select: { slug: true, contentType: { select: { slug: true } } },
+      where: {
+        id: item.reference.id,
+        siteId,
+        publishedRevisionId: { not: null },
+      },
+      select: {
+        publishedRevision: { select: { slug: true } },
+        contentType: { select: { slug: true } },
+      },
     });
-    return entry ? `/${entry.contentType.slug}/${entry.slug}` : item.url;
+    return entry?.publishedRevision
+      ? `/${entry.contentType.slug}/${entry.publishedRevision.slug}`
+      : item.url;
   }
 
   private toOrderBy(sort: DeliveryEntriesQuery["sort"]) {
@@ -444,7 +455,7 @@ export class DeliveryService {
       "publishedAt" | "title",
       "asc" | "desc",
     ];
-    return { [field]: direction };
+    return { publishedRevision: { [field]: direction } };
   }
 
   private toMenuItems(value: unknown): NavigationMenuItem[] {

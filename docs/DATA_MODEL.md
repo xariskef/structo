@@ -419,13 +419,42 @@ Core fields:
 ```text
 id
 entryId
+contentTypeVersionId
 revision
 dataJson
 status
+title
+slug
+excerpt
+seoTitle
+seoDescription
+publishedAt
 createdById
 createdAt
 
 unique(entryId, revision)
+index(contentTypeVersionId)
+```
+
+`ContentEntry.publishedRevisionId` is the authoritative live-content pointer.
+Working entry state may become `SCHEDULED` while the previous immutable
+revision remains deliverable.
+
+### PreviewToken
+
+Stores a revocable draft-preview bearer credential. Only the token hash is
+persisted.
+
+```text
+id
+siteId
+entryId?       // null means site-wide; entry deletion cascades scoped tokens
+tokenHash
+expiresAt
+revokedAt?
+label
+createdById?
+createdAt
 ```
 
 ## Navigation

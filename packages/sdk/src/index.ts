@@ -23,4 +23,5 @@ export type {
   List,
   ListEntriesOptions,
   EntrySort,
+  PreviewSession,
 } from "./types.js";

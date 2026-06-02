@@ -31,17 +31,6 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import { apiRequest } from "../lib/api";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1";
-
-function fullPreviewUrl(token: string, entryId: string | null): string {
-  if (entryId) {
-    return `${API_BASE_URL}/preview/entries/${entryId}?preview=${token}`;
-  }
-  // Site-scoped token — no single-entry endpoint; show the token for SDK use
-  return token;
-}
-
 interface PreviewTokensManagerProps {
   siteId: string;
 }
@@ -52,12 +41,19 @@ export function PreviewTokensManager({ siteId }: PreviewTokensManagerProps) {
   const [expiresAt, setExpiresAt] = useState("");
   const [revealedToken, setRevealedToken] = useState<{
     token: string;
-    entryId: string | null;
+    previewUrl: string | null;
   }>();
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [previewDateRange] = useState(() => {
+    const now = new Date();
+    return {
+      min: now.toISOString().slice(0, 16),
+      max: new Date(now.getTime() + 86_400_000).toISOString().slice(0, 16),
+    };
+  });
 
   async function load() {
     const rows = await apiRequest<PreviewTokenSummary[]>(
@@ -99,7 +95,10 @@ export function PreviewTokensManager({ siteId }: PreviewTokensManagerProps) {
       setTokens((previous) => [created, ...previous]);
       setLabel("");
       setExpiresAt("");
-      setRevealedToken({ token: created.token, entryId: created.entryId });
+      setRevealedToken({
+        token: created.token,
+        previewUrl: created.previewUrl,
+      });
     } catch (reason: unknown) {
       setError(
         reason instanceof Error
@@ -116,10 +115,9 @@ export function PreviewTokensManager({ siteId }: PreviewTokensManagerProps) {
     setBusy(true);
     setError(undefined);
     try {
-      await apiRequest(
-        `/manage/sites/${siteId}/preview-tokens/${token.id}`,
-        { method: "DELETE" },
-      );
+      await apiRequest(`/manage/sites/${siteId}/preview-tokens/${token.id}`, {
+        method: "DELETE",
+      });
       await load();
     } catch (reason: unknown) {
       setError(
@@ -134,7 +132,7 @@ export function PreviewTokensManager({ siteId }: PreviewTokensManagerProps) {
 
   async function copyToken() {
     if (!revealedToken) return;
-    const text = fullPreviewUrl(revealedToken.token, revealedToken.entryId);
+    const text = revealedToken.previewUrl ?? revealedToken.token;
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -151,7 +149,7 @@ export function PreviewTokensManager({ siteId }: PreviewTokensManagerProps) {
 
   const revealedUrl =
     revealedToken !== undefined
-      ? fullPreviewUrl(revealedToken.token, revealedToken.entryId)
+      ? (revealedToken.previewUrl ?? revealedToken.token)
       : undefined;
 
   return (
@@ -227,7 +225,10 @@ export function PreviewTokensManager({ siteId }: PreviewTokensManagerProps) {
                           <p className="font-medium">{token.label}</p>
                           <Badge variant={variant}>{status}</Badge>
                           {token.entryId && (
-                            <Badge variant="outline" className="font-mono text-[10px]">
+                            <Badge
+                              variant="outline"
+                              className="font-mono text-[10px]"
+                            >
                               entry-scoped
                             </Badge>
                           )}
@@ -293,7 +294,8 @@ export function PreviewTokensManager({ siteId }: PreviewTokensManagerProps) {
                   value={expiresAt}
                   onChange={(e) => setExpiresAt(e.currentTarget.value)}
                   required
-                  min={new Date().toISOString().slice(0, 16)}
+                  min={previewDateRange.min}
+                  max={previewDateRange.max}
                   className="rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
@@ -310,7 +312,7 @@ export function PreviewTokensManager({ siteId }: PreviewTokensManagerProps) {
               <p className="text-xs text-muted-foreground">
                 A site-scoped token grants draft-read access to any entry on
                 this site. Use entry-scoped tokens from the entry editor for
-                tighter control.
+                tighter control. Tokens expire within 24 hours.
               </p>
             </form>
           </CardContent>
