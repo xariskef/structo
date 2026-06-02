@@ -434,27 +434,52 @@ export class EntriesService {
     await assertSiteMediaAssets(this.db, siteId, fields, data);
     const nextRevision = (entry.revisions[0]?.revision ?? 0) + 1;
 
-    await this.db.client.$transaction([
-      this.db.client.contentEntry.update({
-        where: { id: entryId },
-        data: {
-          data: this.toJson(data),
-          status: "PUBLISHED",
-          publishedAt: new Date(),
-          ...(latest ? { contentTypeVersionId: latest.id } : {}),
-          updatedById: userId,
-        },
-      }),
-      this.db.client.contentRevision.create({
+    // Snapshot the current taxonomy assignments for the published revision.
+    const currentTerms = await this.db.client.contentEntryTaxonomyTerm.findMany(
+      {
+        where: { entryId },
+        include: { term: { select: { kind: true, name: true, slug: true } } },
+      },
+    );
+
+    await this.db.client.$transaction(async (tx) => {
+      const revision = await tx.contentRevision.create({
         data: {
           entryId,
           revision: nextRevision,
           data: this.toJson(data),
           status: "PUBLISHED",
+          title: entry.title,
+          slug: entry.slug,
+          excerpt: entry.excerpt,
+          seoTitle: entry.seoTitle,
+          seoDescription: entry.seoDescription,
           createdById: userId,
+          terms: {
+            create: currentTerms.map(({ termId, term }) => ({
+              termId,
+              kind: term.kind as string,
+              name: term.name,
+              slug: term.slug,
+            })),
+          },
         },
-      }),
-      this.db.client.auditLog.create({
+        select: { id: true },
+      });
+
+      await tx.contentEntry.update({
+        where: { id: entryId },
+        data: {
+          data: this.toJson(data),
+          status: "PUBLISHED",
+          publishedAt: new Date(),
+          publishedRevisionId: revision.id,
+          ...(latest ? { contentTypeVersionId: latest.id } : {}),
+          updatedById: userId,
+        },
+      });
+
+      await tx.auditLog.create({
         data: {
           organizationId: entry.site.organizationId,
           siteId,
@@ -464,8 +489,8 @@ export class EntriesService {
           entityId: entryId,
           metadata: { revision: nextRevision },
         },
-      }),
-    ]);
+      });
+    });
 
     return this.get(userId, siteId, entryId);
   }
@@ -502,7 +527,7 @@ export class EntriesService {
     await this.db.client.$transaction([
       this.db.client.contentEntry.update({
         where: { id: entryId },
-        data: { status: "DRAFT", updatedById: userId },
+        data: { status: "DRAFT", publishedRevisionId: null, updatedById: userId },
       }),
       this.db.client.auditLog.create({
         data: {
@@ -669,9 +694,15 @@ export class EntriesService {
       );
     }
 
-    await this.db.client.$transaction([
-      this.db.client.contentEntry.delete({ where: { id: entryId } }),
-      this.db.client.auditLog.create({
+    await this.db.client.$transaction(async (tx) => {
+      // Clear publishedRevisionId first to break the circular FK before
+      // the cascade-delete fires on ContentRevision rows.
+      await tx.contentEntry.update({
+        where: { id: entryId },
+        data: { publishedRevisionId: null },
+      });
+      await tx.contentEntry.delete({ where: { id: entryId } });
+      await tx.auditLog.create({
         data: {
           organizationId: entry.site.organizationId,
           siteId,
@@ -681,8 +712,8 @@ export class EntriesService {
           entityId: entryId,
           metadata: { title: entry.title },
         },
-      }),
-    ]);
+      });
+    });
   }
 
   // Applies one action across many entries, reusing the single-entry logic so
@@ -831,12 +862,22 @@ export class EntriesService {
           where: { id },
           select: {
             siteId: true,
+            title: true,
+            slug: true,
+            excerpt: true,
+            seoTitle: true,
+            seoDescription: true,
             data: true,
             site: { select: { organizationId: true } },
             revisions: {
               orderBy: { revision: "desc" },
               take: 1,
               select: { revision: true },
+            },
+            taxonomyTerms: {
+              include: {
+                term: { select: { kind: true, name: true, slug: true } },
+              },
             },
           },
         });
@@ -845,15 +886,35 @@ export class EntriesService {
         }
 
         const revision = (entry.revisions[0]?.revision ?? 0) + 1;
-        await transaction.contentRevision.create({
+        const createdRevision = await transaction.contentRevision.create({
           data: {
             entryId: id,
             revision,
             data: this.toJson(this.toData(entry.data)),
             status: "PUBLISHED",
+            title: entry.title,
+            slug: entry.slug,
+            excerpt: entry.excerpt,
+            seoTitle: entry.seoTitle,
+            seoDescription: entry.seoDescription,
             createdById: null,
+            terms: {
+              create: entry.taxonomyTerms.map(({ termId, term }) => ({
+                termId,
+                kind: term.kind as string,
+                name: term.name,
+                slug: term.slug,
+              })),
+            },
           },
+          select: { id: true },
         });
+
+        await transaction.contentEntry.update({
+          where: { id },
+          data: { publishedRevisionId: createdRevision.id },
+        });
+
         await transaction.auditLog.create({
           data: {
             organizationId: entry.site.organizationId,

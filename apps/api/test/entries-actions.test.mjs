@@ -267,18 +267,26 @@ test("scheduled promotion creates a revision and an audit event", async () => {
           updateMany() {
             return { count: 1 };
           },
+          update() {},
           findUnique() {
             return {
               siteId: "site-a",
+              title: "Hello",
+              slug: "hello",
+              excerpt: null,
+              seoTitle: null,
+              seoDescription: null,
               data: { content: "<p>Hello</p>" },
               site: { organizationId: "org" },
               revisions: [{ revision: 2 }],
+              taxonomyTerms: [],
             };
           },
         },
         contentRevision: {
           create({ data }) {
             revisionData = data;
+            return { id: "rev-new" };
           },
         },
         auditLog: {
@@ -295,6 +303,8 @@ test("scheduled promotion creates a revision and an audit event", async () => {
   assert.equal(revisionData.revision, 3);
   assert.equal(revisionData.status, "PUBLISHED");
   assert.equal(revisionData.createdById, null);
+  assert.equal(revisionData.title, "Hello");
+  assert.equal(revisionData.slug, "hello");
   assert.equal(auditData.action, "entry.publish_scheduled");
   assert.equal(auditData.actorId, null);
 });

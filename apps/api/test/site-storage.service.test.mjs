@@ -87,6 +87,17 @@ const SAMPLE_INPUT = {
   publicBaseUrl: "https://pub.example.com",
 };
 
+/** Stubs globalThis.fetch to return HTTP 200 for the duration of the callback. */
+async function withFetchOk(fn) {
+  const original = globalThis.fetch;
+  globalThis.fetch = () => Promise.resolve({ ok: true, status: 200 });
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
 test("getStatus does not include the secret access key in the response", async () => {
   process.env.STORAGE_ENCRYPTION_KEY = HEX_KEY;
   const client = createClient();
@@ -117,7 +128,7 @@ test("update encrypts and upserts all 6 rows plus writes the audit event", async
     makeStorageResolver(),
   );
 
-  await service.update("user-a", "site-a", SAMPLE_INPUT);
+  await withFetchOk(() => service.update("user-a", "site-a", SAMPLE_INPUT));
 
   assert.equal(upserts.length, 6, "should upsert 6 site-setting rows");
 
@@ -169,7 +180,7 @@ test("update reuses the stored secret when the client omits it", async () => {
 
   // Omit secretAccessKey from the input.
   const { secretAccessKey: _omitted, ...inputWithoutSecret } = SAMPLE_INPUT;
-  await service.update("user-a", "site-a", inputWithoutSecret);
+  await withFetchOk(() => service.update("user-a", "site-a", inputWithoutSecret));
 
   const secretUpsert = upserts.find(
     (u) => u.where.siteId_key.key === STORAGE_SETTING_KEYS.secret,
@@ -202,6 +213,27 @@ test("update throws BadRequestException when credential validation fails", async
 
   await assert.rejects(
     service.update("user-a", "site-a", SAMPLE_INPUT),
+    (error) => error instanceof BadRequestException,
+  );
+
+  delete process.env.STORAGE_ENCRYPTION_KEY;
+});
+
+test("update rejects publicBaseUrl that is an R2 S3 API endpoint", async () => {
+  process.env.STORAGE_ENCRYPTION_KEY = HEX_KEY;
+
+  const client = createClient();
+  const service = new SiteStorageService(
+    { client },
+    authorization(),
+    makeStorageResolver(),
+  );
+
+  await assert.rejects(
+    service.update("user-a", "site-a", {
+      ...SAMPLE_INPUT,
+      publicBaseUrl: "https://abc123.r2.cloudflarestorage.com/my-bucket",
+    }),
     (error) => error instanceof BadRequestException,
   );
 

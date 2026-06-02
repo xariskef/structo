@@ -92,13 +92,14 @@ export class DeliveryService {
       siteId,
       contentTypeId: contentType.id,
       status: "PUBLISHED" as const,
+      publishedRevisionId: { not: null as null },
       AND: [
         ...(query.category
           ? [
               {
-                taxonomyTerms: {
-                  some: {
-                    term: { kind: "CATEGORY" as const, slug: query.category },
+                publishedRevision: {
+                  terms: {
+                    some: { kind: "CATEGORY", slug: query.category },
                   },
                 },
               },
@@ -107,8 +108,8 @@ export class DeliveryService {
         ...(query.tag
           ? [
               {
-                taxonomyTerms: {
-                  some: { term: { kind: "TAG" as const, slug: query.tag } },
+                publishedRevision: {
+                  terms: { some: { kind: "TAG", slug: query.tag } },
                 },
               },
             ]
@@ -119,7 +120,7 @@ export class DeliveryService {
       this.db.client.contentEntry.findMany({
         where,
         include: {
-          taxonomyTerms: { include: { term: true } },
+          publishedRevision: { include: { terms: true } },
         },
         orderBy: this.toOrderBy(query.sort),
         skip: (query.page - 1) * query.pageSize,
@@ -157,10 +158,10 @@ export class DeliveryService {
       where: {
         siteId,
         contentTypeId: contentType.id,
-        slug: entrySlug,
         status: "PUBLISHED",
+        publishedRevision: { slug: entrySlug },
       },
-      include: { taxonomyTerms: { include: { term: true } } },
+      include: { publishedRevision: { include: { terms: true } } },
     });
     if (!entry) throw new NotFoundException("Entry not found.");
     return this.toEntry(
@@ -236,33 +237,37 @@ export class DeliveryService {
     contentTypeSlug: string,
     fields: unknown,
     entry: {
-      title: string;
-      slug: string;
-      data: unknown;
-      excerpt: string | null;
-      seoTitle: string | null;
-      seoDescription: string | null;
       publishedAt: Date | null;
       updatedAt: Date;
-      taxonomyTerms: {
-        term: { kind: "CATEGORY" | "TAG"; name: string; slug: string };
-      }[];
+      publishedRevision: {
+        title: string;
+        slug: string;
+        data: unknown;
+        excerpt: string | null;
+        seoTitle: string | null;
+        seoDescription: string | null;
+        terms: { kind: string; name: string; slug: string }[];
+      } | null;
     },
   ): Promise<DeliveryEntry> {
+    // Fall back to a bare snapshot if publishedRevision is somehow missing
+    // (should not happen for valid published entries).
+    const snap = entry.publishedRevision;
+    if (!snap) throw new NotFoundException("Entry has no published snapshot.");
     return {
       contentTypeSlug,
-      title: entry.title,
-      slug: entry.slug,
-      data: await this.renderData(siteId, fields, entry.data),
-      excerpt: entry.excerpt,
-      seoTitle: entry.seoTitle,
-      seoDescription: entry.seoDescription,
+      title: snap.title,
+      slug: snap.slug,
+      data: await this.renderData(siteId, fields, snap.data),
+      excerpt: snap.excerpt,
+      seoTitle: snap.seoTitle,
+      seoDescription: snap.seoDescription,
       publishedAt: entry.publishedAt?.toISOString() ?? null,
       updatedAt: entry.updatedAt.toISOString(),
-      terms: entry.taxonomyTerms.map(({ term }) => ({
-        kind: term.kind,
-        name: term.name,
-        slug: term.slug,
+      terms: snap.terms.map((t) => ({
+        kind: t.kind as "CATEGORY" | "TAG",
+        name: t.name,
+        slug: t.slug,
       })),
     };
   }

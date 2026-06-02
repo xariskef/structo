@@ -43,15 +43,17 @@ function activeContentType() {
 
 function publishedEntry() {
   return {
-    title: "Hello",
-    slug: "hello",
-    data: {},
-    excerpt: null,
-    seoTitle: null,
-    seoDescription: null,
     publishedAt: new Date("2026-06-01T10:00:00.000Z"),
     updatedAt: new Date("2026-06-01T11:00:00.000Z"),
-    taxonomyTerms: [{ term: { kind: "CATEGORY", name: "News", slug: "news" } }],
+    publishedRevision: {
+      title: "Hello",
+      slug: "hello",
+      data: {},
+      excerpt: null,
+      seoTitle: null,
+      seoDescription: null,
+      terms: [{ kind: "CATEGORY", name: "News", slug: "news" }],
+    },
   };
 }
 
@@ -96,8 +98,11 @@ test("delivery lists published entries with pagination and taxonomy filters", as
   });
 
   assert.equal(capturedWhere.status, "PUBLISHED");
-  assert.equal(capturedWhere.AND[0].taxonomyTerms.some.term.kind, "CATEGORY");
-  assert.equal(capturedWhere.AND[1].taxonomyTerms.some.term.kind, "TAG");
+  assert.equal(
+    capturedWhere.AND[0].publishedRevision.terms.some.kind,
+    "CATEGORY",
+  );
+  assert.equal(capturedWhere.AND[1].publishedRevision.terms.some.kind, "TAG");
   assert.deepEqual(result.meta, {
     page: 2,
     pageSize: 10,
@@ -134,8 +139,11 @@ test("delivery sanitizes declared rich-text fields before returning entries", as
       findFirst() {
         return {
           ...publishedEntry(),
-          data: {
-            content: '<p onclick="bad()">Safe<script>bad()</script></p>',
+          publishedRevision: {
+            ...publishedEntry().publishedRevision,
+            data: {
+              content: '<p onclick="bad()">Safe<script>bad()</script></p>',
+            },
           },
         };
       },
@@ -173,7 +181,13 @@ test("delivery expands media ids into public media objects", async () => {
     },
     contentEntry: {
       findFirst() {
-        return { ...publishedEntry(), data: { hero: "asset-a" } };
+        return {
+          ...publishedEntry(),
+          publishedRevision: {
+            ...publishedEntry().publishedRevision,
+            data: { hero: "asset-a" },
+          },
+        };
       },
     },
     mediaAsset: {

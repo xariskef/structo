@@ -176,6 +176,14 @@ export class SiteStorageService {
     siteId: string,
     config: SiteStorageConfig,
   ): Promise<void> {
+    // Reject publicBaseUrl that points directly at an R2 S3-API endpoint.
+    // Those are private and can never serve public URLs.
+    if (/\.r2\.cloudflarestorage\.com(\/|$)/i.test(config.publicBaseUrl)) {
+      throw new BadRequestException(
+        "publicBaseUrl must be a public-facing URL, not the R2 S3 API endpoint.",
+      );
+    }
+
     const provider = this.storageResolver.buildProvider(config);
     const key = `sites/${siteId}/.structo-storage-check-${randomUUID()}`;
     try {
@@ -189,6 +197,27 @@ export class SiteStorageService {
         `Could not write to the configured bucket: ${this.reason(error)}`,
       );
     }
+
+    // Verify that the publicBaseUrl is actually reachable so mis-configured
+    // URLs are caught during setup rather than at delivery time.
+    const probeUrl = `${config.publicBaseUrl.replace(/\/$/, "")}/${key}`;
+    try {
+      const res = await fetch(probeUrl, { method: "HEAD" });
+      if (!res.ok) {
+        await provider.deleteObject(key).catch(() => undefined);
+        throw new BadRequestException(
+          `publicBaseUrl is not publicly accessible (HTTP ${res.status}). ` +
+            "Ensure the bucket is publicly readable and the URL is correct.",
+        );
+      }
+    } catch (error: unknown) {
+      if (error instanceof BadRequestException) throw error;
+      await provider.deleteObject(key).catch(() => undefined);
+      throw new BadRequestException(
+        `Could not reach publicBaseUrl: ${this.reason(error)}`,
+      );
+    }
+
     await provider.deleteObject(key).catch(() => undefined);
   }
 

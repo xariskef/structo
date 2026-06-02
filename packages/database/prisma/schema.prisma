@@ -284,6 +284,7 @@ model ContentEntry {
   seoTitle             String?
   seoDescription       String?
   publishedAt          DateTime?
+  publishedRevisionId  String?            @unique
   createdById          String?
   updatedById          String?
   createdAt            DateTime           @default(now())
@@ -292,7 +293,8 @@ model ContentEntry {
   site               Site                       @relation(fields: [siteId], references: [id], onDelete: Cascade)
   contentType        ContentType                @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
   contentTypeVersion ContentTypeVersion         @relation(fields: [contentTypeVersionId], references: [id])
-  revisions          ContentRevision[]
+  revisions          ContentRevision[]          @relation("EntryRevisions")
+  publishedRevision  ContentRevision?           @relation("EntryPublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
   taxonomyTerms      ContentEntryTaxonomyTerm[]
 
   @@unique([contentTypeId, slug])
@@ -392,18 +394,38 @@ model ContentEntryTaxonomyTerm {
 }
 
 model ContentRevision {
-  id          String             @id @default(cuid())
-  entryId     String
-  revision    Int
-  data        Json
-  status      ContentEntryStatus
-  createdById String?
-  createdAt   DateTime           @default(now())
+  id             String             @id @default(cuid())
+  entryId        String
+  revision       Int
+  data           Json
+  status         ContentEntryStatus
+  title          String             @default("")
+  slug           String             @default("")
+  excerpt        String?
+  seoTitle       String?
+  seoDescription String?
+  createdById    String?
+  createdAt      DateTime           @default(now())
 
-  entry ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entry       ContentEntry             @relation("EntryRevisions", fields: [entryId], references: [id], onDelete: Cascade)
+  publishedBy ContentEntry?            @relation("EntryPublishedRevision")
+  terms       RevisionTaxonomyTerm[]
 
   @@unique([entryId, revision])
   @@index([entryId])
+}
+
+model RevisionTaxonomyTerm {
+  revisionId String
+  termId     String
+  kind       String
+  name       String
+  slug       String
+
+  revision ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+
+  @@id([revisionId, termId])
+  @@index([revisionId])
 }
 
 model AuditLog {

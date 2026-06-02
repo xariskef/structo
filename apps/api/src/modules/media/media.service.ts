@@ -215,7 +215,7 @@ export class MediaService {
   }
 
   private async assertNotReferenced(siteId: string, assetId: string) {
-    const [entries, terms] = await Promise.all([
+    const [entries, terms, publishedRevisions] = await Promise.all([
       this.db.client.contentEntry.findMany({
         where: { siteId },
         select: { data: true },
@@ -224,9 +224,19 @@ export class MediaService {
         where: { siteId },
         select: { data: true },
       }),
+      // Also check the published snapshot data so that a media asset that has
+      // been removed from the draft but is still referenced by the live snapshot
+      // cannot be deleted until the entry is re-published or unpublished.
+      this.db.client.contentEntry.findMany({
+        where: { siteId, publishedRevisionId: { not: null } },
+        select: { publishedRevision: { select: { data: true } } },
+      }),
     ]);
+    const snapshotData = publishedRevisions
+      .map((e) => e.publishedRevision)
+      .filter(Boolean) as { data: unknown }[];
     if (
-      [...entries, ...terms].some(({ data }) =>
+      [...entries, ...terms, ...snapshotData].some(({ data }) =>
         this.containsReference(data, assetId),
       )
     ) {
