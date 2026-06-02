@@ -25,6 +25,7 @@ import {
   Check,
   Clipboard,
   Clock,
+  Download,
   ExternalLink,
   Eye,
   EyeOff,
@@ -98,6 +99,12 @@ export function EntryEditor({
   // Preview token
   const [previewLabel, setPreviewLabel] = useState("");
   const [previewExpiresAt, setPreviewExpiresAt] = useState("");
+
+  // Import data
+  const [showImportData, setShowImportData] = useState(false);
+  const [importDataJson, setImportDataJson] = useState("");
+  const [importDataError, setImportDataError] = useState<string>();
+  const [importDataApplied, setImportDataApplied] = useState(false);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewCopied, setPreviewCopied] = useState(false);
@@ -123,6 +130,40 @@ export function EntryEditor({
         ? toDateTimeLocal(e.publishedAt)
         : "",
     );
+  }
+
+  function applyImportData(json: string) {
+    setImportDataError(undefined);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      setImportDataError("Invalid JSON — check syntax and try again.");
+      return;
+    }
+    if (typeof parsed !== "object" || parsed === null) {
+      setImportDataError("Expected a JSON object.");
+      return;
+    }
+    const obj = parsed as Record<string, unknown>;
+    if (obj.title !== undefined && typeof obj.title === "string") {
+      setTitle(obj.title);
+      if (!slugEdited) setSlug(labelToSlug(obj.title));
+    }
+    if (obj.data !== undefined && typeof obj.data === "object" && obj.data !== null) {
+      setData((prev) => ({
+        ...prev,
+        ...(obj.data as Record<string, unknown>),
+      }));
+    }
+    if (obj.excerpt !== undefined && typeof obj.excerpt === "string")
+      setExcerpt(obj.excerpt);
+    if (obj.seoTitle !== undefined && typeof obj.seoTitle === "string")
+      setSeoTitle(obj.seoTitle);
+    if (obj.seoDescription !== undefined && typeof obj.seoDescription === "string")
+      setSeoDescription(obj.seoDescription);
+    setImportDataApplied(true);
+    setTimeout(() => setImportDataApplied(false), 3000);
   }
 
   useEffect(() => {
@@ -553,6 +594,66 @@ export function EntryEditor({
             contentTypeId={entry.contentTypeId}
             disabled={isArchived}
           />
+
+          {/* Import data card */}
+          {!isArchived && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <Download className="h-4 w-4" />
+                    Import data
+                  </span>
+                  <button
+                    onClick={() => {
+                      setShowImportData((v) => !v);
+                      setImportDataJson("");
+                      setImportDataError(undefined);
+                    }}
+                    className="text-[11px] font-normal text-muted-foreground hover:text-foreground"
+                  >
+                    {showImportData ? "Hide" : "Show"}
+                  </button>
+                </CardTitle>
+              </CardHeader>
+              {showImportData && (
+                <CardContent className="flex flex-col gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    Paste a JSON object to fill in the form fields. Keys in{" "}
+                    <code className="font-mono">data</code> are merged with the
+                    current values.
+                  </p>
+                  <textarea
+                    rows={6}
+                    value={importDataJson}
+                    onChange={(e) => {
+                      setImportDataJson(e.target.value);
+                      setImportDataError(undefined);
+                    }}
+                    placeholder={`{\n  "title": "About Us",\n  "data": {\n    "heading": "We build great things"\n  }\n}`}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  {importDataError && (
+                    <p className="text-xs text-destructive">{importDataError}</p>
+                  )}
+                  {importDataApplied && (
+                    <p className="flex items-center gap-1.5 text-xs text-primary">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Applied — review and save when ready
+                    </p>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => applyImportData(importDataJson)}
+                    disabled={!importDataJson.trim()}
+                  >
+                    Apply to form
+                  </Button>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           {/* Preview token card */}
           <Card>
