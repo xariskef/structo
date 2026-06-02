@@ -16,8 +16,10 @@ theme and SDK can be added later as separate packages.
 
 ## Project Status
 
-Status: Phase 5.5 editorial structure is in progress. Categories and tags are
-implemented with scoped custom schemas; navigation menus are next.
+Status: Phase 7 media support is implemented. Categories, tags, navigation
+menus and a site-scoped media library are available to editors, and external
+frontend projects can retrieve published site content through hashed,
+site-scoped read-only tokens.
 
 The repository now includes owner registration, login, server-side sessions,
 organizations, sites, invitations, site settings, repeatable collections,
@@ -28,7 +30,11 @@ editorial actions. Categories and tags have built-in description and SEO fields,
 support extra structured fields, use a shared Pages scope and isolated
 per-collection scopes, and can be assigned from the entry editor. Stable
 dependencies were verified from live official sources and the pnpm lockfile is
-present.
+present. Sites can start from editable page, article or blank collection
+presets, and can define several nested navigation menus with links to pages,
+collection archives, collection items and custom URLs. Media and gallery fields
+select assets from the site library and delivery responses expose public media
+objects.
 
 ## Core Product Areas
 
@@ -78,6 +84,7 @@ Before the first database migration:
 4. Add the direct Neon connection as `DIRECT_URL`.
 5. Generate the Prisma client with `corepack pnpm db:generate`.
 6. Apply versioned migrations with `corepack pnpm db:deploy`.
+7. Configure the `R2_*` variables when media uploads are needed.
 
 Do not commit the root `.env`.
 
@@ -90,6 +97,7 @@ Start with:
 - [Data Model](./docs/DATA_MODEL.md)
 - [Content Modeling](./docs/CONTENT_MODELING.md)
 - [API Design](./docs/API_DESIGN.md)
+- [Delivery API](./docs/DELIVERY_API.md)
 - [Security](./docs/SECURITY.md)
 - [Database](./docs/DATABASE.md)
 - [Dependency Policy](./docs/DEPENDENCY_POLICY.md)

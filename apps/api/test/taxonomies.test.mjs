@@ -5,6 +5,7 @@ import { BadRequestException } from "@nestjs/common";
 
 import {
   assignTaxonomyTermsSchema,
+  configuredContentTypeFieldsSchema,
   createTaxonomyTermSchema,
   taxonomyDefinitionQuerySchema,
   taxonomyKindSchema,
@@ -40,6 +41,22 @@ test("taxonomy contracts distinguish categories and tags", () => {
   );
   assert.ok(
     !assignTaxonomyTermsSchema.safeParse({ termIds: ["t1", "t1"] }).success,
+  );
+});
+
+test("configured taxonomy fields reject incomplete immediately-active schemas", () => {
+  assert.ok(configuredContentTypeFieldsSchema.safeParse([]).success);
+  assert.ok(
+    !configuredContentTypeFieldsSchema.safeParse([
+      {
+        id: "theme",
+        key: "theme",
+        label: "Theme",
+        type: "select",
+        required: false,
+        config: {},
+      },
+    ]).success,
   );
 });
 
@@ -281,6 +298,161 @@ test("taxonomy terms validate required custom fields", async () => {
     }),
     (error) => error instanceof BadRequestException,
   );
+});
+
+test("taxonomy updates reject undeclared keys outside schema migration", async () => {
+  const client = {
+    taxonomyTerm: {
+      findUnique() {
+        return {
+          id: "category-a",
+          siteId: "site-a",
+          taxonomyDefinitionVersionId: "category-definition-v1",
+          data: { icon: "news" },
+          taxonomyDefinition: {
+            id: "category-definition",
+            kind: "CATEGORY",
+            fields: [
+              {
+                id: "icon-field",
+                key: "icon",
+                label: "Icon",
+                type: "text",
+                required: true,
+                config: {},
+              },
+            ],
+            site: { organizationId: "org" },
+            versions: [{ id: "category-definition-v1", version: 1 }],
+          },
+        };
+      },
+    },
+  };
+  const service = new TaxonomiesService({ client }, authorization());
+
+  await assert.rejects(
+    service.update("u", "site-a", "category-a", {
+      data: { icon: "news", undeclared: "drop-me" },
+    }),
+    (error) => error instanceof BadRequestException,
+  );
+});
+
+test("taxonomy updates prune removed keys during schema migration", async () => {
+  let updateData;
+  const now = new Date();
+  const client = {
+    taxonomyTerm: {
+      findUnique() {
+        return {
+          id: "category-a",
+          siteId: "site-a",
+          taxonomyDefinitionVersionId: "category-definition-v1",
+          data: { icon: "news", removed: "drop-me" },
+          taxonomyDefinition: {
+            id: "category-definition",
+            kind: "CATEGORY",
+            fields: [
+              {
+                id: "icon-field",
+                key: "icon",
+                label: "Icon",
+                type: "text",
+                required: true,
+                config: {},
+              },
+            ],
+            site: { organizationId: "org" },
+            versions: [{ id: "category-definition-v2", version: 2 }],
+          },
+        };
+      },
+    },
+    $transaction(callback) {
+      return callback({
+        taxonomyTerm: {
+          update({ data }) {
+            updateData = data;
+            return {
+              id: "category-a",
+              siteId: "site-a",
+              taxonomyDefinitionId: "category-definition",
+              taxonomyDefinitionVersionId: data.taxonomyDefinitionVersionId,
+              kind: "CATEGORY",
+              name: "News",
+              slug: "news",
+              description: null,
+              seoTitle: null,
+              seoDescription: null,
+              data: data.data,
+              parentId: null,
+              createdAt: now,
+              updatedAt: now,
+              _count: { entries: 0 },
+            };
+          },
+        },
+        auditLog: { create() {} },
+      });
+    },
+  };
+  const service = new TaxonomiesService({ client }, authorization());
+
+  await service.update("u", "site-a", "category-a", {});
+
+  assert.deepEqual(updateData.data, { icon: "news" });
+  assert.equal(
+    updateData.taxonomyDefinitionVersionId,
+    "category-definition-v2",
+  );
+});
+
+test("taxonomy summaries omit internal prisma count metadata", async () => {
+  const now = new Date();
+  const client = {
+    taxonomyDefinition: {
+      findUnique() {
+        return {
+          id: "category-definition",
+          siteId: "site-a",
+          kind: "CATEGORY",
+          fields: [],
+          site: { organizationId: "org" },
+          versions: [{ id: "category-definition-v1", version: 1 }],
+        };
+      },
+    },
+    taxonomyTerm: {
+      findMany() {
+        return [
+          {
+            id: "category-a",
+            siteId: "site-a",
+            taxonomyDefinitionId: "category-definition",
+            taxonomyDefinitionVersionId: "category-definition-v1",
+            kind: "CATEGORY",
+            name: "News",
+            slug: "news",
+            description: null,
+            seoTitle: null,
+            seoDescription: null,
+            data: {},
+            parentId: null,
+            createdAt: now,
+            updatedAt: now,
+            _count: { entries: 2 },
+          },
+        ];
+      },
+    },
+  };
+  const service = new TaxonomiesService({ client }, authorization());
+
+  const [term] = await service.list("u", "site-a", "category-definition");
+
+  assert.equal(term.itemCount, 2);
+  assert.ok(!("_count" in term));
 });
 
 test("disabling a content type taxonomy removes stale assignments", async () => {

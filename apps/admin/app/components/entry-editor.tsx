@@ -33,6 +33,7 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "../lib/api";
 import { FieldRenderer } from "./entry-field-renderer";
 import { EntryTaxonomies } from "./entry-taxonomies";
+import { SeoFields } from "./seo-fields";
 import { StatusBadge } from "./status-badge";
 
 interface EntryEditorProps {
@@ -333,6 +334,7 @@ export function EntryEditor({
                     setData((prev) => ({ ...prev, [field.key]: v }))
                   }
                   disabled={isArchived}
+                  siteId={siteId}
                 />
               ))}
             </div>
@@ -493,39 +495,16 @@ export function EntryEditor({
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">SEO</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="seo-title" className="flex justify-between">
-                  <span>Meta title</span>
-                  <span className="font-normal text-muted-foreground">
-                    {seoTitle.length}/70
-                  </span>
-                </Label>
-                <Input
-                  id="seo-title"
-                  value={seoTitle}
-                  maxLength={70}
-                  disabled={isArchived}
-                  onChange={(e) => setSeoTitle(e.currentTarget.value)}
-                  placeholder={title}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="seo-desc" className="flex justify-between">
-                  <span>Meta description</span>
-                  <span className="font-normal text-muted-foreground">
-                    {seoDescription.length}/160
-                  </span>
-                </Label>
-                <Textarea
-                  id="seo-desc"
-                  value={seoDescription}
-                  maxLength={160}
-                  rows={3}
-                  disabled={isArchived}
-                  onChange={(e) => setSeoDescription(e.currentTarget.value)}
-                />
-              </div>
+            <CardContent>
+              <SeoFields
+                idPrefix="entry-seo"
+                title={seoTitle}
+                description={seoDescription}
+                disabled={isArchived}
+                titlePlaceholder={title}
+                onTitleChange={setSeoTitle}
+                onDescriptionChange={setSeoDescription}
+              />
             </CardContent>
           </Card>
 

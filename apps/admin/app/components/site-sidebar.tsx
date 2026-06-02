@@ -9,6 +9,7 @@ import {
   ListTree,
   LogOut,
   FolderTree,
+  KeyRound,
   Settings,
   Tag,
   Users,
@@ -170,6 +171,10 @@ export function SiteSidebarNav({ siteId }: SiteSidebarNavProps) {
             <NavLink href={`${base}/settings`}>
               <Settings className="h-4 w-4 shrink-0" />
               Settings
+            </NavLink>
+            <NavLink href={`${base}/api-tokens`}>
+              <KeyRound className="h-4 w-4 shrink-0" />
+              API tokens
             </NavLink>
           </div>
         </div>

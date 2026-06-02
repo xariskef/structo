@@ -6,6 +6,7 @@ import { config } from "dotenv";
 import { fileURLToPath } from "node:url";
 
 import { AppModule } from "./app.module.js";
+import { getDeliveryOpenApiDocument } from "./modules/delivery/openapi.js";
 
 const DEFAULT_API_PORT = 3001;
 const inheritedEnvironment = { ...process.env };
@@ -54,6 +55,10 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup("api/docs", app, () =>
     SwaggerModule.createDocument(app, swaggerConfig),
   );
+  const deliveryDocument = getDeliveryOpenApiDocument();
+  SwaggerModule.setup("api/v1/delivery/docs", app, deliveryDocument, {
+    jsonDocumentUrl: "/api/v1/delivery/openapi.json",
+  });
 
   await app.listen(resolvePort(process.env.API_PORT));
 }

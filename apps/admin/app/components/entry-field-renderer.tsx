@@ -14,12 +14,14 @@ import {
 } from "react";
 
 import { RichTextEditor } from "./rich-text-editor";
+import { MediaPicker } from "./media-picker";
 
 interface FieldRendererProps {
   field: FieldDefinition;
   value: unknown;
   onChange: (value: unknown) => void;
   disabled?: boolean;
+  siteId?: string;
 }
 
 export function FieldRenderer({
@@ -27,6 +29,7 @@ export function FieldRenderer({
   value,
   onChange,
   disabled = false,
+  siteId,
 }: FieldRendererProps) {
   const str = typeof value === "string" ? value : "";
   const num = typeof value === "number" ? value : "";
@@ -243,6 +246,7 @@ export function FieldRenderer({
                 value={groupValue[f.key]}
                 onChange={(v) => onChange({ ...groupValue, [f.key]: v })}
                 disabled={disabled}
+                siteId={siteId}
               />
             ))}
             {groupFields.length === 0 && (
@@ -301,6 +305,7 @@ export function FieldRenderer({
                       value={row[f.key]}
                       onChange={(v) => updateRow(i, { ...row, [f.key]: v })}
                       disabled={disabled}
+                      siteId={siteId}
                     />
                   ))}
                 </div>
@@ -323,15 +328,47 @@ export function FieldRenderer({
     }
 
     case "media":
+      return (
+        <FieldWrap field={field}>
+          {siteId ? (
+            <MediaPicker
+              siteId={siteId}
+              value={str}
+              disabled={disabled}
+              onChange={onChange}
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Media library is unavailable in this context.
+            </p>
+          )}
+        </FieldWrap>
+      );
+
     case "gallery":
+      return (
+        <FieldWrap field={field}>
+          {siteId ? (
+            <MediaPicker
+              siteId={siteId}
+              value={Array.isArray(value) ? (value as string[]) : []}
+              multiple
+              disabled={disabled}
+              onChange={onChange}
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Media library is unavailable in this context.
+            </p>
+          )}
+        </FieldWrap>
+      );
+
     case "relation":
       return (
         <FieldWrap field={field}>
           <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-3">
             <p className="text-xs text-muted-foreground">
-              {field.type === "media" && "Media field — available in Phase 7."}
-              {field.type === "gallery" &&
-                "Gallery field — available in Phase 7."}
               {field.type === "relation" &&
                 "Relation field — available in a later phase."}
             </p>

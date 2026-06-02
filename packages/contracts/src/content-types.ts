@@ -221,35 +221,50 @@ function validateActivatableField(
   }
 }
 
+function validateConfiguredFields(
+  fields: FieldDefinition[],
+  ctx: z.RefinementCtx,
+): void {
+  validateUniqueFields(fields, ctx);
+  fields.forEach((field, index) => {
+    const nestedContext: z.RefinementCtx = {
+      addIssue: (issue) => {
+        const normalized =
+          typeof issue === "string"
+            ? { code: "custom" as const, message: issue }
+            : issue;
+        ctx.addIssue({
+          ...normalized,
+          path: [index, ...(normalized.path ?? [])],
+        });
+      },
+    } as z.RefinementCtx;
+    validateActivatableField(field, nestedContext);
+  });
+}
+
+// Some schemas, such as taxonomy custom fields, are active as soon as they are
+// saved. They may be empty, but any fields they contain must be fully configured.
+export const configuredContentTypeFieldsSchema: z.ZodType<FieldDefinition[]> =
+  z.lazy(() =>
+    z.array(fieldDefinitionSchema).superRefine(validateConfiguredFields),
+  );
+
 export const activatableContentTypeFieldsSchema: z.ZodType<FieldDefinition[]> =
   z.lazy(() =>
     z
       .array(fieldDefinitionSchema)
       .min(1, "A content type must have at least one field before activation.")
-      .superRefine((fields, ctx) => {
-        validateUniqueFields(fields, ctx);
-        fields.forEach((field, index) => {
-          const nestedContext: z.RefinementCtx = {
-            addIssue: (issue) => {
-              const normalized =
-                typeof issue === "string"
-                  ? { code: "custom" as const, message: issue }
-                  : issue;
-              ctx.addIssue({
-                ...normalized,
-                path: [index, ...(normalized.path ?? [])],
-              });
-            },
-          } as z.RefinementCtx;
-          validateActivatableField(field, nestedContext);
-        });
-      }),
+      .superRefine(validateConfiguredFields),
   );
 
 // Content type CRUD schemas
 
 export const contentTypeKindSchema = z.enum(["COLLECTION", "SINGLE"]);
 export type ContentTypeKind = z.infer<typeof contentTypeKindSchema>;
+
+export const contentTypePresetSchema = z.enum(["blank", "article", "page"]);
+export type ContentTypePreset = z.infer<typeof contentTypePresetSchema>;
 
 const contentTypeSlugSchema = z
   .string()
@@ -258,18 +273,41 @@ const contentTypeSlugSchema = z
     "Slug must be lowercase letters, numbers and hyphens.",
   );
 
-export const createContentTypeSchema = z.object({
-  // A collection holds many items (Articles, Products). A single is one
-  // standalone page (Home, About).
-  kind: contentTypeKindSchema.default("COLLECTION"),
-  name: z.string().min(1).max(100),
-  // Human labels used across the admin UI. Optional; the API derives sensible
-  // defaults from `name` when omitted.
-  singularName: z.string().min(1).max(100).optional(),
-  pluralName: z.string().min(1).max(100).optional(),
-  slug: contentTypeSlugSchema,
-  description: z.string().max(500).optional(),
-});
+export const createContentTypeSchema = z
+  .object({
+    // A collection holds many items (Articles, Products). A single is one
+    // standalone page (Home, About).
+    kind: contentTypeKindSchema.default("COLLECTION"),
+    // Presets only initialize a new schema. The created content type remains
+    // fully editable through the same field builder as every other type.
+    preset: contentTypePresetSchema.optional(),
+    name: z.string().min(1).max(100),
+    // Human labels used across the admin UI. Optional; the API derives sensible
+    // defaults from `name` when omitted.
+    singularName: z.string().min(1).max(100).optional(),
+    pluralName: z.string().min(1).max(100).optional(),
+    slug: contentTypeSlugSchema,
+    description: z.string().max(500).optional(),
+  })
+  .superRefine((input, ctx) => {
+    if (input.preset === "page" && input.kind !== "SINGLE") {
+      ctx.addIssue({
+        code: "custom",
+        message: "The page preset requires a single content type.",
+        path: ["preset"],
+      });
+    }
+    if (
+      (input.preset === "blank" || input.preset === "article") &&
+      input.kind !== "COLLECTION"
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Collection presets require a collection content type.",
+        path: ["preset"],
+      });
+    }
+  });
 
 export const updateContentTypeSchema = z.object({
   name: z.string().min(1).max(100).optional(),

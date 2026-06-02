@@ -85,6 +85,7 @@ Initial route groups:
 /sites/:siteId/navigation-link-targets
 /sites/:siteId/api-tokens
 /sites/:siteId/media
+/sites/:siteId/media/:assetId
 /sites/:siteId/audit-logs
 /invitations/accept
 ```
@@ -105,6 +106,10 @@ Implemented management foundation:
 - Site settings are validated and site-scoped.
 - Content types provide repeatable `COLLECTION` types and standalone `SINGLE`
   pages with versioned field schemas.
+- Content type creation accepts an optional `preset`: `blank` and `article`
+  initialize collections, while `page` initializes a standalone page. Article
+  collections begin with categories and tags enabled; all preset output remains
+  editable through the normal structure endpoints.
 - `POST /manage/sites/:siteId/content-types/:contentTypeId/single` resolves or
   creates the one backing item for a `SINGLE` page and rejects collections.
 - Entries support incomplete drafts, strict publishing, scheduling,
@@ -126,6 +131,11 @@ Implemented management foundation:
   collection archives and published collection items so the editor builds links
   in one round-trip. Mutations require `site.manage_navigation`; the first list
   of a site seeds a default `main` menu.
+- API tokens are site-scoped, stored as hashes and revealed once when issued.
+  Token management requires `site.manage_api_tokens`.
+- Media list, multipart upload, metadata update and deletion routes remain
+  site-scoped. Uploads create object keys server-side, validate file signatures
+  and store metadata before assets can be selected by dynamic fields.
 
 ## Delivery API
 
@@ -140,17 +150,25 @@ Initial routes:
 ```text
 /sites/:siteKey/settings
 /sites/:siteKey/content-types
+/sites/:siteKey/content-types/:contentTypeSlug
 /sites/:siteKey/content-types/:contentTypeSlug/entries
 /sites/:siteKey/content-types/:contentTypeSlug/entries/:entrySlug
+/sites/:siteKey/navigation-menus
+/sites/:siteKey/navigation-menus/:menuKey
 ```
 
 Delivery rules:
 
 - Return published content only.
 - Resolve one site by stable public `siteKey`.
-- Scope API tokens to one site.
+- Require a scoped `content:read` Bearer token on every delivery request.
 - Do not leak internal IDs unless the contract requires them.
-- Expose predictable pagination, filtering and sorting.
+- Use offset pagination with `page`, `pageSize` and a response `meta` block.
+- Sort by published date or title and filter entries by category or tag slug.
+- Serve OpenAPI 3.1 JSON at `/api/v1/delivery/openapi.json` and Swagger UI at
+  `/api/v1/delivery/docs`.
+- Sanitize declared TipTap rich-text values recursively before returning entry
+  data.
 
 ## Platform API
 
@@ -193,9 +211,7 @@ Read-only site token
   -> return published site content
 ```
 
-## Open Questions
+## Deferred Delivery Questions
 
 - Should a site optionally allow public delivery without a token?
-- Which pagination style should be the default?
-- Which filters are included in the first delivery release?
-- Should preview tokens be added immediately after publishing or later?
+- Should scoped preview tokens be added after publishing?

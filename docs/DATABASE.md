@@ -74,13 +74,17 @@ the normal workflow.
 20260601120000_add_scheduled_entry_index
 20260601123000_add_taxonomies
 20260601143000_scope_taxonomies_and_add_term_fields
+20260601155930_add_navigation_menus
+20260601183000_add_site_api_tokens
+20260602090000_add_media_assets
 ```
 
 The migrations create identity and tenancy, settings and audit logs,
 authentication sessions and invitations, versioned content types, and content
 entries with publish revisions, collection and single-page structures,
 editorial metadata and scheduling, and scoped versioned taxonomies with dynamic
-term fields.
+term fields, nested navigation menus, hashed site delivery API tokens and
+site-scoped media metadata.
 
 ## Neon Setup Checklist
 

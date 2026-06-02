@@ -92,41 +92,46 @@ Current official documentation checks:
 | NestJS throttling | NestJS documents `@nestjs/throttler` as its rate-limiting package and supports global guard registration.                                                                    | [NestJS rate limiting](https://docs.nestjs.com/security/rate-limiting)                                     |
 | NestJS scheduling | NestJS documents `@nestjs/schedule`, `ScheduleModule.forRoot()` and declarative `@Cron()` jobs.                                                                              | [NestJS task scheduling](https://docs.nestjs.com/techniques/task-scheduling)                               |
 | TipTap React      | TipTap documents `@tiptap/react`, `@tiptap/pm` and `@tiptap/starter-kit` for React, plus `immediatelyRender: false` for SSR.                                                 | [TipTap React guide](https://tiptap.dev/docs/editor/getting-started/install/react)                         |
+| HTML sanitization | `sanitize-html` documents parser-based cleanup with configurable allowed tags and per-element allowed attributes.                                                            | [sanitize-html README](https://github.com/apostrophecms/sanitize-html)                                     |
+| Cloudflare R2     | Cloudflare documents its S3-compatible endpoint and AWS SDK for JavaScript v3 configuration with region `auto`.                                                              | [Cloudflare R2 S3 SDK guide](https://developers.cloudflare.com/r2/examples/aws/aws-sdk-js-v3/)             |
 | Password hashing  | OWASP recommends Argon2id and documents a minimum configuration of `19 MiB`, `2` iterations and parallelism `1`.                                                             | [OWASP password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) |
 
 ## Baseline Inventory
 
 Verified Phase 1 baseline:
 
-| Dependency          | Selected stable version | Verified on  | Compatibility notes                                                                                                                         |
-| ------------------- | ----------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Node.js active LTS  | `24.16.0`               | `2026-05-30` | Active LTS `Krypton`; pinned in `.nvmrc` and `.node-version`; package engine accepts compatible Node 24.x installations                     |
-| pnpm                | `11.5.0`                | `2026-05-30` | Stable registry `latest`; pinned in `packageManager`                                                                                        |
-| Corepack            | `0.35.0`                | `2026-05-30` | Stable registry `latest`; used in CI with Node `24.16.0`                                                                                    |
-| Turborepo           | `2.9.16`                | `2026-05-30` | Stable registry `latest`                                                                                                                    |
-| NestJS              | `11.1.24`               | `2026-05-30` | Stable registry `latest`; default Express adapter                                                                                           |
-| Express             | Transitive through Nest | `2026-05-30` | Installed through `@nestjs/platform-express`                                                                                                |
-| Next.js             | `16.2.6`                | `2026-05-30` | Stable registry `latest`; paired with React `19.2.6`                                                                                        |
-| React               | `19.2.6`                | `2026-05-30` | Stable registry `latest`; paired with Next.js `16.2.6`                                                                                      |
-| ESLint              | `9.39.4`                | `2026-05-30` | Latest compatible stable maintenance release; ESLint `10.4.1` is not yet supported by transitive plugins from `eslint-config-next@16.2.6`   |
-| Prisma ORM          | `7.8.0`                 | `2026-05-30` | Stable registry `latest`; Neon adapter uses the same version                                                                                |
-| Neon PostgreSQL     | Remote managed database | `2026-05-30` | Pooled runtime URL and direct migration URL are configured separately                                                                       |
-| Zod                 | `4.4.3`                 | `2026-05-31` | Stable registry `latest`; installed for shared static API input contracts                                                                   |
-| Ajv                 | `8.20.0`                | `2026-05-30` | Stable registry `latest`; reserved for optional future JSON Schema interoperability, not required by the current generated Zod runtime path |
-| TypeScript          | `6.0.3`                 | `2026-05-30` | Stable registry `latest`; supported by selected toolchain                                                                                   |
-| argon2              | `0.44.0`                | `2026-05-31` | Stable registry `latest`; Argon2id password hashing                                                                                         |
-| @nestjs/throttler   | `6.5.0`                 | `2026-05-31` | Stable registry `latest`; API and authentication endpoint rate limiting                                                                     |
-| @types/express      | `5.0.6`                 | `2026-05-31` | Stable registry `latest`; explicit request and response types for cookie transport                                                          |
-| @playwright/test    | `1.60.0`                | `2026-05-31` | Stable registry `latest`; Chromium administration E2E runner                                                                                |
-| Tailwind CSS        | `4.3.0`                 | `2026-05-31` | Stable registry `latest`; shared shadcn/ui styling baseline                                                                                 |
-| radix-ui            | `1.4.3`                 | `2026-05-31` | Stable registry `latest`; shared shadcn/ui primitive bundle                                                                                 |
-| lucide-react        | `1.17.0`                | `2026-05-31` | Stable registry `latest`; administration icon set                                                                                           |
-| tsx                 | `4.22.4`                | `2026-05-31` | Stable registry `latest`; NestJS API development runner                                                                                     |
-| @nestjs/schedule    | `6.1.3`                 | `2026-06-01` | Stable registry `latest`; minute-based scheduled publishing worker                                                                          |
-| @tiptap/react       | `3.24.0`                | `2026-06-01` | Stable registry `latest`; React editor bindings                                                                                             |
-| @tiptap/pm          | `3.24.0`                | `2026-06-01` | Stable registry `latest`; direct dependency recommended by the official TipTap React guide                                                  |
-| @tiptap/starter-kit | `3.24.0`                | `2026-06-01` | Stable registry `latest`; baseline rich-text extensions                                                                                     |
-| @tiptap/extensions  | `3.24.0`                | `2026-06-01` | Stable registry `latest`; placeholder extension                                                                                             |
+| Dependency           | Selected stable version | Verified on  | Compatibility notes                                                                                                                         |
+| -------------------- | ----------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node.js active LTS   | `24.16.0`               | `2026-05-30` | Active LTS `Krypton`; pinned in `.nvmrc` and `.node-version`; package engine accepts compatible Node 24.x installations                     |
+| pnpm                 | `11.5.0`                | `2026-05-30` | Stable registry `latest`; pinned in `packageManager`                                                                                        |
+| Corepack             | `0.35.0`                | `2026-05-30` | Stable registry `latest`; used in CI with Node `24.16.0`                                                                                    |
+| Turborepo            | `2.9.16`                | `2026-05-30` | Stable registry `latest`                                                                                                                    |
+| NestJS               | `11.1.24`               | `2026-05-30` | Stable registry `latest`; default Express adapter                                                                                           |
+| Express              | Transitive through Nest | `2026-05-30` | Installed through `@nestjs/platform-express`                                                                                                |
+| Next.js              | `16.2.6`                | `2026-05-30` | Stable registry `latest`; paired with React `19.2.6`                                                                                        |
+| React                | `19.2.6`                | `2026-05-30` | Stable registry `latest`; paired with Next.js `16.2.6`                                                                                      |
+| ESLint               | `9.39.4`                | `2026-05-30` | Latest compatible stable maintenance release; ESLint `10.4.1` is not yet supported by transitive plugins from `eslint-config-next@16.2.6`   |
+| Prisma ORM           | `7.8.0`                 | `2026-05-30` | Stable registry `latest`; Neon adapter uses the same version                                                                                |
+| Neon PostgreSQL      | Remote managed database | `2026-05-30` | Pooled runtime URL and direct migration URL are configured separately                                                                       |
+| Zod                  | `4.4.3`                 | `2026-05-31` | Stable registry `latest`; installed for shared static API input contracts                                                                   |
+| Ajv                  | `8.20.0`                | `2026-05-30` | Stable registry `latest`; reserved for optional future JSON Schema interoperability, not required by the current generated Zod runtime path |
+| TypeScript           | `6.0.3`                 | `2026-05-30` | Stable registry `latest`; supported by selected toolchain                                                                                   |
+| argon2               | `0.44.0`                | `2026-05-31` | Stable registry `latest`; Argon2id password hashing                                                                                         |
+| @nestjs/throttler    | `6.5.0`                 | `2026-05-31` | Stable registry `latest`; API and authentication endpoint rate limiting                                                                     |
+| @types/express       | `5.0.6`                 | `2026-05-31` | Stable registry `latest`; explicit request and response types for cookie transport                                                          |
+| @playwright/test     | `1.60.0`                | `2026-05-31` | Stable registry `latest`; Chromium administration E2E runner                                                                                |
+| Tailwind CSS         | `4.3.0`                 | `2026-05-31` | Stable registry `latest`; shared shadcn/ui styling baseline                                                                                 |
+| radix-ui             | `1.4.3`                 | `2026-05-31` | Stable registry `latest`; shared shadcn/ui primitive bundle                                                                                 |
+| lucide-react         | `1.17.0`                | `2026-05-31` | Stable registry `latest`; administration icon set                                                                                           |
+| tsx                  | `4.22.4`                | `2026-05-31` | Stable registry `latest`; NestJS API development runner                                                                                     |
+| @nestjs/schedule     | `6.1.3`                 | `2026-06-01` | Stable registry `latest`; minute-based scheduled publishing worker                                                                          |
+| @tiptap/react        | `3.24.0`                | `2026-06-01` | Stable registry `latest`; React editor bindings                                                                                             |
+| @tiptap/pm           | `3.24.0`                | `2026-06-01` | Stable registry `latest`; direct dependency recommended by the official TipTap React guide                                                  |
+| @tiptap/starter-kit  | `3.24.0`                | `2026-06-01` | Stable registry `latest`; baseline rich-text extensions                                                                                     |
+| @tiptap/extensions   | `3.24.0`                | `2026-06-01` | Stable registry `latest`; placeholder extension                                                                                             |
+| sanitize-html        | `2.17.4`                | `2026-06-01` | Stable registry `latest`; parser-based server-side Delivery API rich-text sanitization                                                      |
+| @types/sanitize-html | `2.16.1`                | `2026-06-01` | Stable registry `latest`; TypeScript declarations for `sanitize-html`                                                                       |
+| @aws-sdk/client-s3   | `3.1058.0`              | `2026-06-02` | Stable registry `latest`; official S3 client used by the Cloudflare R2 storage adapter                                                      |
 
 ## Continuous Integration
 

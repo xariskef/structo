@@ -3,9 +3,9 @@
 ## Status
 
 The identity, tenancy, site settings, audit log, content type and content entry
-foundations are implemented through versioned Prisma migrations. Delivery,
-media and later operational entities remain conceptual until their feature work
-begins.
+foundations are implemented through versioned Prisma migrations. Delivery and
+media are implemented; later operational entities remain conceptual until their
+feature work begins.
 
 ## Identity And Access
 
@@ -466,7 +466,9 @@ revokedAt?
 createdAt
 ```
 
-Raw token values are shown only once when created. The database stores a hash.
+Raw token values use the `stk_` prefix and are shown only once when created.
+The database stores only the SHA-256 hash. `scopes` is a string list so future
+delivery capabilities can be granted explicitly without changing the table.
 
 Initial scope:
 

@@ -23,6 +23,7 @@ import type { FieldDefinition } from "@structo/field-kit";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { DatabaseService } from "../database/database.service.js";
+import { assertSiteMediaAssets } from "../media/media-references.js";
 
 @Injectable()
 export class EntriesService {
@@ -93,6 +94,7 @@ export class EntriesService {
 
     const fields = this.toFields(activeVersion.fields);
     const data = this.validateData(fields, input.data, "draft");
+    await assertSiteMediaAssets(this.db, siteId, fields, data);
 
     try {
       const entry = await this.db.client.$transaction(
@@ -328,6 +330,14 @@ export class EntriesService {
             ),
             "draft",
           );
+    if (data !== undefined) {
+      await assertSiteMediaAssets(
+        this.db,
+        siteId,
+        this.toFields(versionFields),
+        data,
+      );
+    }
 
     try {
       await this.db.client.$transaction([
@@ -421,6 +431,7 @@ export class EntriesService {
       ),
       "publish",
     );
+    await assertSiteMediaAssets(this.db, siteId, fields, data);
     const nextRevision = (entry.revisions[0]?.revision ?? 0) + 1;
 
     await this.db.client.$transaction([
@@ -769,6 +780,7 @@ export class EntriesService {
       ),
       "publish",
     );
+    await assertSiteMediaAssets(this.db, siteId, fields, data);
 
     await this.db.client.$transaction([
       this.db.client.contentEntry.update({

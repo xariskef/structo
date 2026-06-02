@@ -29,6 +29,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../lib/api";
 import { FieldsBuilder } from "./content-type-editor";
 import { FieldRenderer } from "./entry-field-renderer";
+import { SeoFields } from "./seo-fields";
 
 interface TaxonomyManagerProps {
   siteId: string;
@@ -316,31 +317,13 @@ export function TaxonomyManager({
                   <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                     SEO
                   </p>
-                  <div className="grid gap-3">
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="taxonomy-seo-title">Meta title</Label>
-                      <Input
-                        id="taxonomy-seo-title"
-                        value={seoTitle}
-                        onChange={(event) =>
-                          setSeoTitle(event.currentTarget.value)
-                        }
-                      />
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="taxonomy-seo-description">
-                        Meta description
-                      </Label>
-                      <Textarea
-                        id="taxonomy-seo-description"
-                        value={seoDescription}
-                        rows={3}
-                        onChange={(event) =>
-                          setSeoDescription(event.currentTarget.value)
-                        }
-                      />
-                    </div>
-                  </div>
+                  <SeoFields
+                    idPrefix="taxonomy-seo"
+                    title={seoTitle}
+                    description={seoDescription}
+                    onTitleChange={setSeoTitle}
+                    onDescriptionChange={setSeoDescription}
+                  />
                 </div>
 
                 {fields.length > 0 && (
@@ -359,6 +342,7 @@ export function TaxonomyManager({
                             [field.key]: value,
                           }))
                         }
+                        siteId={siteId}
                       />
                     ))}
                   </div>

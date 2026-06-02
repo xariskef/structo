@@ -71,6 +71,7 @@ export function CollectionsList({ siteId }: CollectionsListProps) {
           method: "POST",
           body: JSON.stringify({
             kind: "COLLECTION",
+            preset: data.get("preset"),
             name: data.get("pluralName"),
             pluralName: data.get("pluralName"),
             singularName: data.get("singularName"),
@@ -117,6 +118,24 @@ export function CollectionsList({ siteId }: CollectionsListProps) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="col-preset">Starting point</Label>
+                <select
+                  id="col-preset"
+                  name="preset"
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  defaultValue="blank"
+                >
+                  <option value="blank">Blank collection</option>
+                  <option value="article">
+                    Articles with categories and tags
+                  </option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Presets only set the initial structure. You can change every
+                  field and taxonomy later.
+                </p>
+              </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="col-plural">
                   Name (plural){" "}

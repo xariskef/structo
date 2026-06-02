@@ -6,7 +6,12 @@
     "DATABASE_URL",
     "DIRECT_URL",
     "NEXT_PUBLIC_API_BASE_URL",
-    "NODE_ENV"
+    "NODE_ENV",
+    "R2_ACCESS_KEY_ID",
+    "R2_ACCOUNT_ID",
+    "R2_BUCKET",
+    "R2_PUBLIC_BASE_URL",
+    "R2_SECRET_ACCESS_KEY"
   ],
   "tasks": {
     "build": {

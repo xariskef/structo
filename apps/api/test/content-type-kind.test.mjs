@@ -45,6 +45,44 @@ describe("content type kind", () => {
     assert.ok(result.success, JSON.stringify(result.error));
     assert.equal(result.data.kind, "SINGLE");
   });
+
+  it("accepts compatible page and article presets", () => {
+    assert.ok(
+      createContentTypeSchema.safeParse({
+        kind: "SINGLE",
+        preset: "page",
+        name: "About",
+        slug: "about",
+      }).success,
+    );
+    assert.ok(
+      createContentTypeSchema.safeParse({
+        kind: "COLLECTION",
+        preset: "article",
+        name: "Articles",
+        slug: "articles",
+      }).success,
+    );
+  });
+
+  it("rejects presets that do not match the content type kind", () => {
+    assert.ok(
+      !createContentTypeSchema.safeParse({
+        kind: "COLLECTION",
+        preset: "page",
+        name: "Pages",
+        slug: "pages",
+      }).success,
+    );
+    assert.ok(
+      !createContentTypeSchema.safeParse({
+        kind: "SINGLE",
+        preset: "article",
+        name: "Article",
+        slug: "article",
+      }).success,
+    );
+  });
 });
 
 describe("default seeded content field", () => {

@@ -23,3 +23,5 @@ export * from "./content-types.js";
 export * from "./entries.js";
 export * from "./taxonomies.js";
 export * from "./navigation.js";
+export * from "./delivery.js";
+export * from "./media.js";

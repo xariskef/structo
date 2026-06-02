@@ -4,8 +4,8 @@
 
 The modular monolith scaffold, identity and tenancy, administration UI, site
 settings, custom content types and content entry modules are implemented. Core
-content hardening, the editorial workflow and scoped versioned taxonomies are
-implemented. Navigation menus are next, before delivery endpoints are added.
+content hardening, the editorial workflow, scoped versioned taxonomies,
+navigation menus and the token-authenticated delivery API are implemented.
 
 ## System Shape
 
@@ -107,6 +107,10 @@ apps/api/src/modules/
   content-types/
   entries/
   taxonomies/
+  navigation/
+  api-tokens/
+  delivery/
+  media/
 ```
 
 Planned later modules:
@@ -116,9 +120,6 @@ apps/api/src/modules/
   users/
   organization-memberships/
   site-memberships/
-  media/
-  api-tokens/
-  delivery/
   audit-logs/
   analytics/
   platform-admin/
@@ -169,6 +170,8 @@ PostgreSQL is the initial system of record.
 - JSONB stores dynamic content entry values and versioned field schemas.
 - Object storage stores media files.
 - The database stores media metadata and object references.
+- `packages/storage` owns the storage provider interface. Its Cloudflare R2
+  implementation uses the S3-compatible API through the official AWS SDK.
 
 ## Deployment
 

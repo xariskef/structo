@@ -10,6 +10,7 @@ import {
   type BulkContentTypesInput,
   type ContentTypeDetail,
   type ContentTypeKind,
+  type ContentTypePreset,
   type ContentTypeSummary,
   type CreateContentTypeInput,
   type EntryStatus,
@@ -27,6 +28,25 @@ import { EntriesService } from "../entries/entries.service.js";
 // default WordPress editor. It can be removed from the Structure tab.
 function defaultContentFields(): FieldDefinition[] {
   return [createField("richText", "Content", "content")];
+}
+
+function resolvePreset(input: CreateContentTypeInput): ContentTypePreset {
+  const preset = input.preset ?? (input.kind === "SINGLE" ? "page" : "blank");
+  const isCompatible =
+    (preset === "page" && input.kind === "SINGLE") ||
+    (preset !== "page" && input.kind === "COLLECTION");
+
+  if (!isCompatible) {
+    throw new BadRequestException(
+      "The selected preset is not compatible with this content type kind.",
+    );
+  }
+
+  return preset;
+}
+
+function presetTaxonomies(preset: ContentTypePreset): TaxonomyKind[] {
+  return preset === "article" ? ["CATEGORY", "TAG"] : [];
 }
 
 // Shape returned by the queries below: a content type row plus the relation
@@ -165,6 +185,8 @@ export class ContentTypesService {
     const site = await this.findSite(siteId);
     const singularName = input.singularName ?? input.name;
     const pluralName = input.pluralName ?? input.name;
+    const preset = resolvePreset(input);
+    const taxonomies = presetTaxonomies(preset);
 
     try {
       const contentType = await this.db.client.$transaction(
@@ -179,7 +201,18 @@ export class ContentTypesService {
               slug: input.slug,
               description: input.description ?? null,
               fields: JSON.parse(JSON.stringify(defaultContentFields())),
+              ...(taxonomies.length > 0
+                ? {
+                    taxonomies: {
+                      create: taxonomies.map((taxonomy) => ({
+                        siteId,
+                        taxonomy,
+                      })),
+                    },
+                  }
+                : {}),
             },
+            include: { taxonomies: { select: { taxonomy: true } } },
           });
 
           if (created.kind === "COLLECTION") {
@@ -210,6 +243,7 @@ export class ContentTypesService {
                 kind: created.kind,
                 name: created.name,
                 slug: created.slug,
+                preset,
               },
             },
           });

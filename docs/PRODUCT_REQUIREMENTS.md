@@ -93,7 +93,7 @@ Needs:
 - Publish and unpublish entries.
 - Schedule future publication.
 - Manage excerpts, SEO metadata and bulk editorial actions.
-- Consume site-scoped media after the media milestone.
+- Upload, edit, delete and select site-scoped media.
 - Manage delivery API tokens.
 
 ### Content Modeling
@@ -103,11 +103,14 @@ Needs:
   or events.
 - `SINGLE` types represent standalone pages such as home, about or contact and
   hold exactly one backing item.
+- Creation presets initialize blank collections, article collections and
+  standalone pages without limiting later schema edits.
 - Content schemas are versioned.
 - Entry values are validated server-side.
 - The initial field catalog includes rich structured fields.
 - Nested groups are supported.
 - Repeaters support add-row, remove-row and reorder-row operations.
+- Media and gallery fields select assets from the site media library.
 - Categories are hierarchical and tags are flat.
 - Standalone pages share one Pages taxonomy scope.
 - Every collection owns an isolated taxonomy scope so articles, services and
@@ -123,7 +126,11 @@ Needs:
 
 - External frontend projects are separate from the CMS.
 - Delivery routes expose published content only.
-- Tokens are scoped to one site.
+- Every delivery request requires a hashed, read-only token scoped to one site.
+- Delivery exposes settings, active content types, published entries and
+  navigation menus.
+- Entry lists support offset pagination, sorting and category/tag slug filters.
+- OpenAPI JSON and interactive Swagger documentation are served by the API.
 - Draft preview is a later capability.
 
 ## Initial Non-Functional Requirements

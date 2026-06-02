@@ -37,6 +37,22 @@ collections or pages do not require new database tables or application code.
 A single page is archived as a content type. Its backing item is not archived
 independently.
 
+## Content Type Presets
+
+Creation presets are small initializers, not permanent content type classes.
+They reduce repetitive setup while preserving the flexibility of the custom
+post-type model:
+
+```text
+blank    collection with the built-in rich-text content field
+article  collection with content plus categories and tags enabled
+page     standalone page with the built-in rich-text content field
+```
+
+After creation, an administrator can edit the schema and enabled taxonomies
+through the normal structure editor. Presets do not require separate database
+tables and do not restrict future field changes.
+
 ## Taxonomies
 
 Structo supports two editorial taxonomy kinds:
@@ -65,6 +81,10 @@ Extra values such as an icon, archive image, color, rich introduction or nested
 metadata live in term `dataJson`. Existing terms render the latest definition
 schema and move to its latest immutable version when saved. Removed custom keys
 are pruned during that migration.
+
+Entry and taxonomy SEO metadata remains built in rather than becoming dynamic
+custom fields. Their administration forms share one reusable SEO control so
+meta title and description limits stay consistent.
 
 Each content type explicitly enables the taxonomy kinds its entries can use.
 Entry assignments are validated server-side: a term must belong to the same
@@ -123,7 +143,10 @@ richtext
 ```
 
 `richText` values are edited with TipTap and stored as HTML inside entry JSON.
-Stored HTML is untrusted content and must be sanitized before delivery rendering.
+Stored HTML is untrusted content. The Delivery API sanitizes every declared
+`richText` value before returning it, including values nested in groups and
+repeater rows. The allowlist keeps baseline TipTap formatting and safe links
+while removing executable tags, unsafe attributes and unsafe link schemes.
 
 ### Media Fields
 

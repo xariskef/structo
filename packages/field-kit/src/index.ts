@@ -352,6 +352,44 @@ export function buildDraftEntryDataSchema(
   return buildEntryDataSchema(fields, { draft: true });
 }
 
+export function collectMediaAssetIds(
+  fields: FieldDefinition[],
+  data: Record<string, unknown>,
+): string[] {
+  const ids = new Set<string>();
+  collectMediaIds(fields, data, ids);
+  return [...ids];
+}
+
+function collectMediaIds(
+  fields: FieldDefinition[],
+  data: Record<string, unknown>,
+  ids: Set<string>,
+): void {
+  for (const field of fields) {
+    const value = data[field.key];
+    if (field.type === "media" && typeof value === "string") {
+      ids.add(value);
+    } else if (field.type === "gallery" && Array.isArray(value)) {
+      for (const id of value) {
+        if (typeof id === "string") ids.add(id);
+      }
+    } else if (field.type === "group" && isRecord(value)) {
+      collectMediaIds((field.config as GroupConfig).fields, value, ids);
+    } else if (field.type === "repeater" && Array.isArray(value)) {
+      for (const row of value) {
+        if (isRecord(row)) {
+          collectMediaIds((field.config as RepeaterConfig).fields, row, ids);
+        }
+      }
+    }
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function labelToKey(label: string): string {
   return label
     .trim()

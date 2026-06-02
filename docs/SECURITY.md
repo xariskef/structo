@@ -100,8 +100,13 @@ edit drafts but cannot publish.
   storage only.
 - Never commit real API keys, database URLs or object storage credentials.
 - Hash API tokens before persistence.
+- Prefix raw delivery tokens with `stk_`, scope them to one site and require the
+  `content:read` scope for delivery requests.
+- Reject delivery from archived sites and reject revoked or expired tokens.
 - Encrypt reversible provider credentials at rest.
 - Show newly generated delivery tokens once.
+- Grant token issuance and revocation only to organization owners,
+  organization administrators and site administrators.
 - Rotate exposed credentials immediately.
 
 ## Dynamic Content
@@ -111,8 +116,10 @@ edit drafts but cannot publish.
 - Reject undeclared dynamic entry keys.
 - Validate all required values again before publishing.
 - Treat stored TipTap rich-text HTML as untrusted content.
-- Sanitize rich-text HTML at the delivery or frontend rendering boundary before
-  inserting it into a document.
+- Sanitize declared rich-text HTML server-side at the Delivery API boundary,
+  including values nested in groups and repeaters.
+- Use an explicit allowlist for TipTap formatting tags and safe link schemes;
+  strip executable tags, unsafe attributes and unsafe links before delivery.
 - Do not execute dynamic JavaScript stored in the database.
 - Do not use `eval()` or `new Function()`.
 - Scope taxonomy definitions, terms and entry assignments to the requested
@@ -127,9 +134,16 @@ edit drafts but cannot publish.
 ## Media
 
 - Restrict MIME types and file sizes.
+- Verify upload signatures instead of trusting browser-declared MIME types.
 - Generate storage keys server-side.
 - Keep uploads scoped to a site.
 - Store metadata in PostgreSQL.
+- Validate dynamic media references against the current site before saving
+  entries or taxonomy term custom fields.
+- Refuse media deletion while an entry or taxonomy term still references the
+  asset.
+- Keep R2 access keys in secret storage and expose only the intended public
+  media base URL.
 - Add malware scanning later if deployment risk requires it.
 
 ## Logging

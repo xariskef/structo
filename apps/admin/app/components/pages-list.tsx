@@ -124,6 +124,7 @@ export function PagesList({ siteId }: PagesListProps) {
           method: "POST",
           body: JSON.stringify({
             kind: "SINGLE",
+            preset: "page",
             name,
             singularName: name,
             pluralName: name,

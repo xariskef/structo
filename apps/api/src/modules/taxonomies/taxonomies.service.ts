@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
-  contentTypeFieldsSchema,
+  configuredContentTypeFieldsSchema,
   type AssignTaxonomyTermsInput,
   type CreateTaxonomyTermInput,
   type TaxonomyDefinitionDetail,
@@ -20,6 +20,7 @@ import { buildEntryDataSchema, type FieldDefinition } from "@structo/field-kit";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
 import { DatabaseService } from "../database/database.service.js";
+import { assertSiteMediaAssets } from "../media/media-references.js";
 
 @Injectable()
 export class TaxonomiesService {
@@ -149,6 +150,12 @@ export class TaxonomiesService {
       this.toFields(definition.fields),
       input.data,
     );
+    await assertSiteMediaAssets(
+      this.db,
+      siteId,
+      this.toFields(definition.fields),
+      data,
+    );
 
     try {
       const term = await this.db.client.$transaction(async (transaction) => {
@@ -225,15 +232,14 @@ export class TaxonomiesService {
       input.parentId,
       termId,
     );
+    const fields = this.toFields(definition.fields);
     const currentData = this.toData(input.data ?? term.data);
-    const migratedData = this.projectData(
-      this.toFields(definition.fields),
-      currentData,
-    );
-    const data = this.validateData(
-      this.toFields(definition.fields),
-      migratedData,
-    );
+    const isMigrating = term.taxonomyDefinitionVersionId !== latestVersion.id;
+    const nextData = isMigrating
+      ? this.projectData(fields, currentData)
+      : currentData;
+    const data = this.validateData(fields, nextData);
+    await assertSiteMediaAssets(this.db, siteId, fields, data);
 
     try {
       const updated = await this.db.client.$transaction(async (transaction) => {
@@ -516,7 +522,7 @@ export class TaxonomiesService {
   }
 
   private validateFieldSchema(fields: unknown[]): FieldDefinition[] {
-    const result = contentTypeFieldsSchema.safeParse(fields);
+    const result = configuredContentTypeFieldsSchema.safeParse(fields);
     if (!result.success) {
       throw new BadRequestException(
         `Taxonomy field schema is invalid: ${result.error.issues
@@ -622,8 +628,20 @@ export class TaxonomiesService {
     _count: { entries: number };
   }): TaxonomyTermSummary {
     return {
-      ...term,
+      id: term.id,
+      siteId: term.siteId,
+      taxonomyDefinitionId: term.taxonomyDefinitionId,
+      taxonomyDefinitionVersionId: term.taxonomyDefinitionVersionId,
+      kind: term.kind,
+      name: term.name,
+      slug: term.slug,
+      description: term.description,
+      seoTitle: term.seoTitle,
+      seoDescription: term.seoDescription,
       data: this.toData(term.data),
+      parentId: term.parentId,
+      createdAt: term.createdAt,
+      updatedAt: term.updatedAt,
       itemCount: term._count.entries,
     };
   }

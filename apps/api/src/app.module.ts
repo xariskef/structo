@@ -15,6 +15,9 @@ import { SettingsModule } from "./modules/settings/settings.module.js";
 import { NavigationModule } from "./modules/navigation/navigation.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
 import { TaxonomiesModule } from "./modules/taxonomies/taxonomies.module.js";
+import { ApiTokensModule } from "./modules/api-tokens/api-tokens.module.js";
+import { DeliveryModule } from "./modules/delivery/delivery.module.js";
+import { MediaModule } from "./modules/media/media.module.js";
 
 @Module({
   imports: [
@@ -36,6 +39,9 @@ import { TaxonomiesModule } from "./modules/taxonomies/taxonomies.module.js";
     NavigationModule,
     SitesModule,
     TaxonomiesModule,
+    ApiTokensModule,
+    DeliveryModule,
+    MediaModule,
   ],
   providers: [
     {
