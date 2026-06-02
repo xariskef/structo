@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   auditLogsQuerySchema,
+  clearAuditLogsResultSchema,
   paginatedAuditLogsSchema,
   platformHealthSummarySchema,
   platformOverviewSummarySchema,
@@ -32,6 +33,15 @@ describe("operations contracts", () => {
         data: [],
         meta: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
       }).success,
+    );
+  });
+
+  it("validates a clear-audit-logs result", () => {
+    assert.ok(
+      clearAuditLogsResultSchema.safeParse({ deletedCount: 5 }).success,
+    );
+    assert.ok(
+      !clearAuditLogsResultSchema.safeParse({ deletedCount: -1 }).success,
     );
   });
 

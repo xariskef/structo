@@ -5,10 +5,29 @@ import { NotFoundException } from "@nestjs/common";
 
 import { AuditLogsService } from "../dist/modules/audit-logs/audit-logs.service.js";
 
-function createClient({ rows = [], total = rows.length, users = [] } = {}) {
+function createClient({
+  rows = [],
+  total = rows.length,
+  users = [],
+  deletedCount = 0,
+} = {}) {
   const calls = {};
+  const tx = {
+    auditLog: {
+      deleteMany(args) {
+        calls.deleteMany = args;
+        return { count: deletedCount };
+      },
+      create(args) {
+        calls.create = args;
+        return {};
+      },
+    },
+  };
   const client = {
-    $transaction: (operations) => Promise.all(operations),
+    // Array form for list+count; callback form for the clear transaction.
+    $transaction: (arg) =>
+      typeof arg === "function" ? arg(tx) : Promise.all(arg),
     auditLog: {
       findMany(args) {
         calls.findMany = args;
@@ -129,6 +148,54 @@ test("site audit logs reject callers without site access", async () => {
 
   await assert.rejects(
     service.listForSite("user-a", "site-a", { page: 1, pageSize: 20 }),
+    NotFoundException,
+  );
+});
+
+test("clearing organization audit logs deletes the scope and records the clear", async () => {
+  const { client, calls } = createClient({ deletedCount: 7 });
+  const service = new AuditLogsService({ client }, allowAll);
+
+  const result = await service.clearForOrganization("user-a", "org-a");
+
+  assert.equal(calls.deleteMany.where.organizationId, "org-a");
+  assert.equal(result.deletedCount, 7);
+  assert.equal(calls.create.data.action, "audit_log.clear");
+  assert.equal(calls.create.data.organizationId, "org-a");
+  assert.equal(calls.create.data.actorId, "user-a");
+  assert.equal(calls.create.data.metadata.deletedCount, 7);
+});
+
+test("clearing site audit logs is scoped and records org context", async () => {
+  const { client, calls } = createClient({ deletedCount: 3 });
+  const access = {
+    assertOrganizationPermission() {},
+    assertSitePermission() {
+      return { organizationId: "org-a" };
+    },
+  };
+  const service = new AuditLogsService({ client }, access);
+
+  const result = await service.clearForSite("user-a", "site-a");
+
+  assert.equal(calls.deleteMany.where.siteId, "site-a");
+  assert.equal(result.deletedCount, 3);
+  assert.equal(calls.create.data.siteId, "site-a");
+  assert.equal(calls.create.data.organizationId, "org-a");
+});
+
+test("clearing organization audit logs requires the manage permission", async () => {
+  const { client } = createClient();
+  const denying = {
+    assertOrganizationPermission() {
+      throw new NotFoundException();
+    },
+    assertSitePermission() {},
+  };
+  const service = new AuditLogsService({ client }, denying);
+
+  await assert.rejects(
+    service.clearForOrganization("user-a", "org-a"),
     NotFoundException,
   );
 });

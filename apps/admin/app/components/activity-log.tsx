@@ -15,6 +15,7 @@ import {
   Clock,
   Loader2,
   ScrollText,
+  Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -39,6 +40,7 @@ export function ActivityLog(props: ActivityLogProps) {
   const [sites, setSites] = useState<SiteOption[]>([]);
   const [result, setResult] = useState<PaginatedAuditLogs>();
   const [loading, setLoading] = useState(true);
+  const [clearing, setClearing] = useState(false);
   const [error, setError] = useState<string>();
 
   const basePath = useMemo(() => {
@@ -90,6 +92,40 @@ export function ActivityLog(props: ActivityLogProps) {
       .finally(() => setLoading(false));
   }, [load]);
 
+  // Platform-wide clearing is intentionally not offered.
+  const canClear = props.scope !== "platform";
+
+  async function clearLog() {
+    const message =
+      props.scope === "organization"
+        ? "This permanently deletes the entire activity log for this organization, including all of its sites. Continue?"
+        : "This permanently deletes the activity log for this site. Continue?";
+    if (!window.confirm(message)) return;
+    setClearing(true);
+    setError(undefined);
+    try {
+      await apiRequest(basePath, { method: "DELETE" });
+      setPage(1);
+      const query = new URLSearchParams({
+        page: "1",
+        pageSize: String(PAGE_SIZE),
+      });
+      if (siteFilter) query.set("siteId", siteFilter);
+      const data = await apiRequest<PaginatedAuditLogs>(
+        `${basePath}?${query.toString()}`,
+      );
+      setResult(data);
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Unable to clear the activity log.",
+      );
+    } finally {
+      setClearing(false);
+    }
+  }
+
   const logs = result?.data ?? [];
   const meta = result?.meta;
   const totalPages = meta?.totalPages ?? 0;
@@ -101,24 +137,43 @@ export function ActivityLog(props: ActivityLogProps) {
           <ScrollText className="h-4 w-4" />
           Activity
         </CardTitle>
-        {props.scope === "organization" && sites.length > 0 && (
-          <select
-            aria-label="Filter by site"
-            value={siteFilter}
-            onChange={(event) => {
-              setPage(1);
-              setSiteFilter(event.currentTarget.value);
-            }}
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-          >
-            <option value="">All sites</option>
-            {sites.map((site) => (
-              <option key={site.id} value={site.id}>
-                {site.name}
-              </option>
-            ))}
-          </select>
-        )}
+        <div className="flex items-center gap-2">
+          {props.scope === "organization" && sites.length > 0 && (
+            <select
+              aria-label="Filter by site"
+              value={siteFilter}
+              onChange={(event) => {
+                setPage(1);
+                setSiteFilter(event.currentTarget.value);
+              }}
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">All sites</option>
+              {sites.map((site) => (
+                <option key={site.id} value={site.id}>
+                  {site.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {canClear && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={clearing || (meta?.total ?? 0) === 0}
+              onClick={clearLog}
+              className="text-destructive hover:text-destructive"
+            >
+              {clearing ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Clear log
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {error && (

@@ -538,6 +538,11 @@ listings. Listings re-enforce scope server-side, resolve actor display data in a
 single batched lookup (no N+1), render events with no actor as a system actor,
 and sanitize metadata to redact secret-looking keys before returning it.
 
+An organization or site activity log can also be cleared by a manager. Clearing
+deletes the events in that scope and writes a new `audit_log.clear` event
+recording the actor, scope and deleted count, so the trail is never fully
+erased.
+
 ### AnalyticsEvent
 
 Reserved for later analytics work and intentionally not implemented in Phase

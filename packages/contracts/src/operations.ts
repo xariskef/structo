@@ -57,6 +57,16 @@ export const paginatedAuditLogsSchema = z.object({
 
 export type PaginatedAuditLogs = z.infer<typeof paginatedAuditLogsSchema>;
 
+/**
+ * Result of clearing an activity log. The clear is destructive but is itself
+ * recorded as a new audit event, so the trail always shows who cleared it.
+ */
+export const clearAuditLogsResultSchema = z.object({
+  deletedCount: z.number().int().min(0),
+});
+
+export type ClearAuditLogsResult = z.infer<typeof clearAuditLogsResultSchema>;
+
 export const platformCountsSchema = z.object({
   organizations: z.number().int().min(0),
   sites: z.number().int().min(0),

@@ -33,5 +33,17 @@ test.describe("Activity", () => {
     await page.goto(`/dashboard/organizations/${orgId}/activity`);
     await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible();
     await expect(page.getByText("Api token create").first()).toBeVisible();
+
+    // Clearing is destructive but records itself: the token event disappears
+    // and an "Audit log clear" event remains. The clear runs a transaction plus
+    // a reload against the remote database, so allow extra time.
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Clear log" }).click();
+    await expect(page.getByText("Audit log clear").first()).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page.getByText("Api token create")).toHaveCount(0, {
+      timeout: 30000,
+    });
   });
 });

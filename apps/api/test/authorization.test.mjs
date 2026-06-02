@@ -152,3 +152,52 @@ test("site admins and inherited org roles can view audit logs; editors cannot", 
     NotFoundException,
   );
 });
+
+test("clearing audit logs is limited to managers, not analysts or editors", async () => {
+  const service = createService({
+    organizationMemberships: {
+      "organization-a:owner": { role: "OWNER" },
+      "organization-a:analyst": { role: "ANALYST" },
+    },
+    siteMemberships: {
+      "site-a:admin": { role: "SITE_ADMIN" },
+      "site-a:editor": { role: "EDITOR" },
+    },
+    sites: {
+      "site-a": { organizationId: "organization-a" },
+    },
+  });
+
+  await service.assertOrganizationPermission(
+    "owner",
+    "organization-a",
+    "organization.manage_audit_logs",
+  );
+  await assert.rejects(
+    service.assertOrganizationPermission(
+      "analyst",
+      "organization-a",
+      "organization.manage_audit_logs",
+    ),
+    NotFoundException,
+  );
+
+  await service.assertSitePermission(
+    "admin",
+    "site-a",
+    "site.manage_audit_logs",
+  );
+  await service.assertSitePermission(
+    "owner",
+    "site-a",
+    "site.manage_audit_logs",
+  );
+  await assert.rejects(
+    service.assertSitePermission("editor", "site-a", "site.manage_audit_logs"),
+    NotFoundException,
+  );
+  await assert.rejects(
+    service.assertSitePermission("analyst", "site-a", "site.manage_audit_logs"),
+    NotFoundException,
+  );
+});

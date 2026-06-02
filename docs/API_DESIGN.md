@@ -146,6 +146,12 @@ Implemented management foundation:
   Actor display data is resolved in one batched query and log metadata is
   sanitized before it is returned. `GET /manage/auth/me` additionally reports
   whether the current user is a platform operator.
+- An activity log can be cleared with `DELETE` on the same path
+  (`/manage/organizations/:organizationId/audit-logs`,
+  `/manage/sites/:siteId/audit-logs`). Clearing requires the manage permissions
+  (`organization.manage_audit_logs` / `site.manage_audit_logs`, held by owners,
+  admins and site administrators) and is destructive, but it is itself recorded
+  as a new `audit_log.clear` event with the actor, scope and deleted count.
 
 ## Delivery API
 

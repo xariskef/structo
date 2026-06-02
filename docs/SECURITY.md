@@ -192,6 +192,13 @@ roles. Editors, authors and viewers cannot read activity logs.
   private key) before activity is returned, as defence in depth.
 - Resolve actor display data in one batched query (no N+1) and render events
   with no actor (scheduled jobs) as a system actor.
+- Clearing an activity log is a separate, destructive manage action
+  (`organization.manage_audit_logs` / `site.manage_audit_logs`, held only by
+  owners, admins and site administrators — never analysts, editors, authors or
+  viewers). It requires confirmation in the UI and is itself recorded as a new
+  `audit_log.clear` event (actor, scope, deleted count), so the trail always
+  shows who cleared it and when. This is a deliberate trade-off: it reduces the
+  log's tamper-evidence in exchange for an administrator-controlled reset.
 
 ## Reference Project Warning
 

@@ -1,5 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { AuditLogsQuery, PaginatedAuditLogs } from "@structo/contracts";
+import type {
+  AuditLogsQuery,
+  ClearAuditLogsResult,
+  PaginatedAuditLogs,
+} from "@structo/contracts";
 import { Prisma } from "@structo/database";
 
 import { AuthorizationService } from "../authorization/authorization.service.js";
@@ -58,5 +62,60 @@ export class AuditLogsService {
     };
 
     return loadAuditLogPage(this.db.client, where, query.page, query.pageSize);
+  }
+
+  async clearForOrganization(
+    userId: string,
+    organizationId: string,
+  ): Promise<ClearAuditLogsResult> {
+    await this.authorizationService.assertOrganizationPermission(
+      userId,
+      organizationId,
+      "organization.manage_audit_logs",
+    );
+
+    // Clearing is destructive, so the clear itself is recorded as a new event
+    // after the deletion — the trail always shows who cleared it and when.
+    return this.db.client.$transaction(async (tx) => {
+      const deleted = await tx.auditLog.deleteMany({
+        where: { organizationId },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId,
+          actorId: userId,
+          action: "audit_log.clear",
+          entityType: "AuditLog",
+          metadata: { scope: "organization", deletedCount: deleted.count },
+        },
+      });
+      return { deletedCount: deleted.count };
+    });
+  }
+
+  async clearForSite(
+    userId: string,
+    siteId: string,
+  ): Promise<ClearAuditLogsResult> {
+    const access = await this.authorizationService.assertSitePermission(
+      userId,
+      siteId,
+      "site.manage_audit_logs",
+    );
+
+    return this.db.client.$transaction(async (tx) => {
+      const deleted = await tx.auditLog.deleteMany({ where: { siteId } });
+      await tx.auditLog.create({
+        data: {
+          organizationId: access.organizationId,
+          siteId,
+          actorId: userId,
+          action: "audit_log.clear",
+          entityType: "AuditLog",
+          metadata: { scope: "site", deletedCount: deleted.count },
+        },
+      });
+      return { deletedCount: deleted.count };
+    });
   }
 }
