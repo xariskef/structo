@@ -146,7 +146,7 @@ Needs:
   recent activity and a high-level health summary. It is visually distinct and
   denies access to non-operators.
 - Analytics event ingestion is intentionally deferred until its boundary is
-  agreed; this phase collects no visitor data.
+  agreed; Structo currently collects no visitor data.
 
 ## Initial Non-Functional Requirements
 

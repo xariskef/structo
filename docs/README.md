@@ -3,6 +3,10 @@
 ## Start Here
 
 - [Project Overview](../README.md)
+- [Contributing](../CONTRIBUTING.md)
+- [Changelog](../CHANGELOG.md)
+- [Delivery API](./DELIVERY_API.md)
+- [Draft Mode](./DRAFT_MODE.md)
 
 ## Architecture
 
@@ -16,8 +20,7 @@
 - [Dependency Policy](./DEPENDENCY_POLICY.md)
 - [Architecture Decisions](./DECISIONS.md)
 
-## Maintenance Rule
+## Keeping Docs Current
 
-Documentation changes are required when implementation changes behavior,
-contracts, architecture, data ownership, security assumptions or milestone
-status.
+Update the relevant document in the same pull request whenever a change affects
+behavior, contracts, architecture, data ownership or security assumptions.

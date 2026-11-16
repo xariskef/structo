@@ -360,7 +360,7 @@ same limits and interaction patterns apply consistently.
 
 Status: accepted.
 
-Phase 8.1 ships read-only operational visibility first and defers analytics
+Read-only operational visibility ships first and defers analytics
 event ingestion until Q-004 is resolved.
 
 - Organization and site **activity logs** read the existing `AuditLog` records

@@ -38,7 +38,7 @@ export default function HomePage() {
               <Link href={area.href}>Open →</Link>
             ) : (
               <span style={{ color: "#9db6ae", fontSize: "0.85rem" }}>
-                Coming in a later milestone
+                Coming soon
               </span>
             )}
           </div>

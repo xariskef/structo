@@ -6,7 +6,7 @@ The modular monolith scaffold, identity and tenancy, administration UI, site
 settings, custom content types and content entry modules are implemented. Core
 content hardening, the editorial workflow, scoped versioned taxonomies,
 navigation menus, the token-authenticated delivery API and the media library are
-implemented. Phase 8.1 adds read-only operational visibility: organization and
+implemented, together with read-only operational visibility: organization and
 site activity logs and a restricted platform operator surface (overview, health,
 audit logs).
 

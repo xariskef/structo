@@ -1,105 +1,181 @@
-# Structo CMS
+# Structo
 
-Structo CMS is a multi-site headless content management system.
+A multi-site headless CMS built with NestJS, Next.js and PostgreSQL.
 
-The first release focuses on a small, correct core:
+One account can run several organizations, each organization can own many
+independent sites, and every site defines its own content model. Frontends read
+published content through a token-authenticated delivery API or the
+`@structo/sdk` client.
 
-- One account can manage one or more organizations.
-- An organization can own multiple independent sites.
-- Organization owners can manage all sites from one dashboard.
-- External collaborators can be granted access to a single site only.
-- Each site can define its own content types and structured fields.
-- Frontend applications consume published content through a delivery API.
+> Structo is an early `0.1` release. The core is tested and usable, but APIs
+> may still change. Feedback and contributions are very welcome.
 
-The public frontend is intentionally outside this repository for now. A starter
-theme can be added later as a separate package and consume the included SDK.
+## Features
 
-## Project Status
+**Content modeling**
 
-Status: Phase 9.3 starter-theme stabilization is complete. The repository
-includes operational visibility, immutable published snapshots, short-lived
-draft-preview tokens and `@structo/sdk`. The corrective migrations are deployed
-and the expanded browser content-flow verification is passing. Analytics event
-ingestion remains intentionally deferred.
+- Collections (repeatable, like custom post types) and standalone pages
+- Visual field builder with text, rich text, number, boolean, select, date,
+  color, media, gallery, nested groups, repeaters and more
+- Versioned schemas: entries are validated against the active version and
+  migrated when the schema changes
+- Categories and tags with their own custom fields
+- Navigation menus with nested items
 
-The repository now includes owner registration, login, server-side sessions,
-organizations, sites, invitations, site settings, repeatable collections,
-standalone pages, versioned dynamic field schemas, content entries, publishing
-and functional organization and site dashboards. The site editor includes a
-TipTap HTML editor, SEO metadata, excerpts, scheduled publishing and bulk
-editorial actions. Categories and tags have built-in description and SEO fields,
-support extra structured fields, use a shared Pages scope and isolated
-per-collection scopes, and can be assigned from the entry editor. Stable
-dependencies were verified from live official sources and the pnpm lockfile is
-present. Sites can start from editable page, article or blank collection
-presets, and can define several nested navigation menus with links to pages,
-collection archives, collection items and custom URLs. Media and gallery fields
-select assets from the site library and delivery responses expose public media
-objects.
+**Editorial**
 
-## Core Product Areas
+- Rich text editor (TipTap), SEO fields and excerpts
+- Draft, publish, unpublish and scheduled publishing
+- Immutable revisions and published snapshots — editing a draft never changes
+  what is live
+- Bulk actions, duplication, JSON import and export
+- Media library on Cloudflare R2, with optional per-site buckets
 
-```text
-Platform Administration
-  Manage organizations, users, platform health, logs and support operations.
+**Multi-site and access**
 
-Organization Dashboard
-  Manage sites, organization members, aggregated analytics and activity logs.
+- Organizations → sites, with organization roles (owner, admin, analyst) and
+  site roles (site admin, editor, author, viewer)
+- Invite external collaborators to a single site
+- Activity logs per organization and per site
+- Separate platform operator console
 
-Site Dashboard
-  Manage site settings, content types, entries, media and site-level access.
+**Delivery**
 
-Delivery API
-  Expose published site content to external frontend applications.
-```
+- Read-only delivery API with per-site API tokens and OpenAPI docs
+- Short-lived draft preview tokens (Next.js Draft Mode guide included)
+- Signed webhooks (HMAC-SHA256) on publish, unpublish, schedule and delete
+- `@structo/sdk`: zero-dependency TypeScript client (ESM and CJS)
+
+## Tech Stack
+
+| Layer    | Technology                                           |
+| -------- | ---------------------------------------------------- |
+| API      | NestJS 11, Zod 4                                     |
+| Admin    | Next.js 16, React 19, Tailwind CSS 4, shadcn/ui      |
+| Database | PostgreSQL with Prisma 7 (Neon works out of the box) |
+| Storage  | Cloudflare R2 (S3-compatible)                        |
+| Tooling  | pnpm workspaces, Turborepo, Playwright               |
 
 ## Repository Structure
 
 ```text
 apps/
-  api/            NestJS modular monolith
-  admin/          Next.js administration application
+  api/          NestJS API (management, delivery, preview, platform)
+  admin/        Next.js admin dashboard
 
 packages/
-  database/       Prisma schema, migrations and database client
-  contracts/      Shared API DTOs and validation contracts
-  field-kit/      Dynamic field registry, schemas and validation
-  storage/        Storage interface and providers
-  ui/             Shared administration UI components
-  sdk/            Frontend delivery API client
+  database/     Prisma schema, migrations and client
+  contracts/    Shared API types and Zod schemas
+  field-kit/    Field type registry and runtime validation
+  storage/      Storage interface and R2 provider
+  ui/           Shared admin UI components
+  sdk/          @structo/sdk delivery client
 ```
 
-## Local Setup
+## Getting Started
 
-Install dependencies with the pinned pnpm version:
+Requirements: Node.js 24 and Corepack (ships with Node). pnpm is pinned in
+`package.json` and used through `corepack pnpm`.
 
 ```bash
+git clone https://github.com/xariskef/structo.git
+cd structo
 corepack pnpm install
+cp .env.example .env
 ```
 
-Before the first database migration:
+Edit `.env`:
 
-1. Rotate any Neon credential that has been exposed outside secret storage.
-2. Copy `.env.example` to a root `.env`.
-3. Add the pooled Neon connection as `DATABASE_URL`.
-4. Add the direct Neon connection as `DIRECT_URL`.
-5. Generate the Prisma client with `corepack pnpm db:generate`.
-6. Apply versioned migrations with `corepack pnpm db:deploy`.
-7. Configure the `R2_*` variables when media uploads are needed.
+- `DATABASE_URL` — pooled PostgreSQL connection used at runtime
+- `DIRECT_URL` — direct connection used for migrations
+- `R2_*` — only needed for media uploads
+- `STORAGE_ENCRYPTION_KEY` — only needed for per-site storage
+  (`openssl rand -hex 32`)
 
-Do not commit the root `.env`.
+Then create the database schema and start both apps:
+
+```bash
+corepack pnpm db:generate
+corepack pnpm db:deploy
+corepack pnpm dev
+```
+
+- Admin: http://localhost:3000
+- API: http://localhost:3001/api/v1 (OpenAPI at http://localhost:3001/api/docs)
+
+Register the first account in the admin, create an organization and a site, and
+start modeling content.
+
+## Using Content In A Frontend
+
+Create a delivery token under the site's API tokens, then:
+
+```ts
+import { StructoClient } from "@structo/sdk";
+
+const structo = new StructoClient({
+  baseUrl: "http://localhost:3001/api/v1",
+  siteKey: "my-site",
+  token: process.env.STRUCTO_DELIVERY_TOKEN!,
+});
+
+const { data: articles } = await structo.listEntries("articles");
+```
+
+See the [SDK README](./packages/sdk/README.md) for Next.js, Astro and SvelteKit
+examples, and [Draft Mode](./docs/DRAFT_MODE.md) for previews.
+
+## Scripts
+
+```bash
+corepack pnpm dev            # API and admin in watch mode
+corepack pnpm build          # build everything
+corepack pnpm test           # unit tests
+corepack pnpm lint           # ESLint
+corepack pnpm check-types    # TypeScript
+corepack pnpm format         # Prettier
+corepack pnpm db:migrate     # create a migration in development
+corepack pnpm db:studio      # Prisma Studio
+```
+
+End-to-end tests (both apps must be running):
+
+```bash
+corepack pnpm --filter @structo/admin test:e2e
+```
 
 ## Documentation
 
-Start with:
-
-- [Product Requirements](./docs/PRODUCT_REQUIREMENTS.md)
 - [Architecture](./docs/ARCHITECTURE.md)
 - [Data Model](./docs/DATA_MODEL.md)
 - [Content Modeling](./docs/CONTENT_MODELING.md)
 - [API Design](./docs/API_DESIGN.md)
 - [Delivery API](./docs/DELIVERY_API.md)
 - [Security](./docs/SECURITY.md)
-- [Database](./docs/DATABASE.md)
-- [Dependency Policy](./docs/DEPENDENCY_POLICY.md)
-- [Decisions](./docs/DECISIONS.md)
+- [Architecture Decisions](./docs/DECISIONS.md)
+- [All docs](./docs/README.md)
+
+## Roadmap
+
+Ideas where help is welcome:
+
+- Starter frontend theme built on the SDK
+- Relation fields between entries (the field type exists, the editor does not
+  support it yet)
+- Visual page builder blocks
+- Localization (multi-language content)
+- Image transformations and focal points
+- More storage providers (S3, local disk)
+- Docker Compose setup for local development
+
+Have another idea? Open an issue.
+
+## Contributing
+
+Contributions of any size are welcome. Please read
+[CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request, and report
+security issues privately as described in [SECURITY.md](./.github/SECURITY.md).
+
+## License
+
+[MIT](./LICENSE) © Charis Kefallinos

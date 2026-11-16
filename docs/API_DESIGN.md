@@ -244,8 +244,8 @@ Platform rules:
 - The public `GET /api/v1/health` route stays minimal for load-balancer and
   readiness checks; expensive aggregate counts live only on the operator routes.
 
-Deferred (pending Q-004): `/platform/analytics` and any user-management or
-support mutations. This phase adds no impersonation or destructive actions.
+Not implemented: `/platform/analytics` and any user-management or support
+mutations. The platform surface has no impersonation or destructive actions.
 
 ## Authentication And Authorization
 

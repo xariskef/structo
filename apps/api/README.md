@@ -1,51 +1,50 @@
-# API Application
+# API
 
-NestJS modular monolith scaffold.
+NestJS modular monolith that serves both the management API used by the admin
+app and the public delivery API used by frontends.
 
-Current bootstrap:
-
-- Global API prefix: `/api/v1`
-- Health endpoint: `/api/v1/health`
+- Global prefix: `/api/v1`
+- Health check: `GET /api/v1/health`
 - OpenAPI UI: `/api/docs`
-- Owner registration and session endpoints: `/api/v1/manage/auth/*`
-- Tenant endpoints: `/api/v1/manage/organizations/*` and
-  `/api/v1/manage/sites/*`
-- Invitation endpoints: `/api/v1/manage/*/invitations`
+- Management API: `/api/v1/manage/*` (session-authenticated)
+- Delivery API: `/api/v1/delivery/sites/:siteKey/*` (site API token, OpenAPI
+  at `/api/v1/delivery/docs`)
+- Draft preview: `/api/v1/preview/*` (short-lived preview token)
+- Platform console: `/api/v1/platform/*` (platform operators only)
 
-Implemented modules:
-
-```text
-src/modules/
-  auth/
-  authorization/
-  content-types/
-  database/
-  entries/
-  health/
-  invitations/
-  organizations/
-  settings/
-  sites/
-```
-
-Later modules:
+## Modules
 
 ```text
 src/modules/
-  users/
-  organization-memberships/
-  site-memberships/
-  media/
-  api-tokens/
-  delivery/
-  audit-logs/
-  analytics/
-  platform-admin/
+  auth/            registration, login, sessions
+  authorization/   roles, permissions and guards
+  organizations/   organizations and members
+  sites/           sites inside an organization
+  invitations/     organization and site invitations
+  settings/        per-site settings
+  site-storage/    per-site R2 configuration (encrypted secrets)
+  content-types/   collections and pages, schema versions, import/export
+  entries/         items, revisions, publishing and scheduling
+  taxonomies/      categories and tags
+  navigation/      navigation menus
+  media/           media library
+  api-tokens/      delivery API tokens
+  preview-tokens/  draft preview tokens
+  delivery/        public read-only delivery API
+  webhooks/        signed webhook delivery
+  audit-logs/      organization and site activity logs
+  platform/        platform operator console
+  health/          health check
+  database/        Prisma client provider
 ```
 
-Content types are generic site-scoped custom post types. Entries remain bound
-to an immutable activated schema version, permit incremental draft editing and
-require strict validation before publishing.
+Content types are site-scoped custom post types. Entries are bound to an
+immutable schema version, allow incremental draft editing and are strictly
+validated before publishing.
 
-The remaining feature modules are added milestone by milestone. External
-dependencies are pinned after live registry verification.
+## Scripts
+
+```bash
+corepack pnpm --filter @structo/api dev
+corepack pnpm --filter @structo/api test
+```

@@ -2,8 +2,7 @@
 
 ## Goal
 
-Protect tenant data, credentials and publishing boundaries from the first
-implementation milestone.
+Protect tenant data, credentials and publishing boundaries.
 
 ## Tenant Isolation
 
@@ -117,7 +116,7 @@ roles. Editors, authors and viewers cannot read activity logs.
   platform access.
 - Enforce platform access with a dedicated guard on `/api/v1/platform` routes,
   running after the global session guard. Reject non-operators consistently.
-- Keep all platform routes read-only in this phase. Do not add a public
+- Keep all platform routes read-only. Do not add a public
   self-service route to become a platform operator, organization impersonation
   or destructive support actions.
 - Grant the role out of band with the documented development helper

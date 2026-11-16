@@ -370,7 +370,7 @@ export function FieldRenderer({
           <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-3">
             <p className="text-xs text-muted-foreground">
               {field.type === "relation" &&
-                "Relation field — available in a later phase."}
+                "Relation fields are not supported yet."}
             </p>
           </div>
         </FieldWrap>

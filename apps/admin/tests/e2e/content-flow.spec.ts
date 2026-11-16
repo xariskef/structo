@@ -1,5 +1,5 @@
 /**
- * Phase 9.0 — End-to-end content flow + published-snapshot regression
+ * End-to-end content flow and published-snapshot regression
  *
  * Proves that:
  *  1. A published entry is reachable via the Delivery API.

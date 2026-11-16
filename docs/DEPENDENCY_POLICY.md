@@ -75,7 +75,7 @@ compatibility.
 
 Verified on: `2026-05-30`
 
-The Phase 1 dependency baseline was queried from the live registry, checked for
+The initial dependency baseline was queried from the live registry, checked for
 stable `latest` tags and installed with pnpm. The generated lockfile is the
 reproducible dependency source for this scaffold and must be committed when the
 repository is initialized.
@@ -98,7 +98,7 @@ Current official documentation checks:
 
 ## Baseline Inventory
 
-Verified Phase 1 baseline:
+Verified initial baseline:
 
 | Dependency           | Selected stable version | Verified on  | Compatibility notes                                                                                                                         |
 | -------------------- | ----------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |

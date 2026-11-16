@@ -1,17 +1,10 @@
-# Shared Packages
-
-Current workspace packages:
+# Packages
 
 ```text
-database/       Prisma schema, migrations and database client
-contracts/      Shared API DTOs and validation contracts
-field-kit/      Initial dynamic field catalog and definitions
-```
-
-Planned workspace packages:
-
-```text
-storage/        Storage interface and providers
-ui/             Shared administration UI components
-sdk/            Frontend delivery API client, added later
+database/    Prisma schema, migrations and database client
+contracts/   Shared API types and Zod validation schemas
+field-kit/   Field type registry and runtime entry validation
+storage/     Storage interface and the Cloudflare R2 provider
+ui/          Shared admin UI components (shadcn/ui)
+sdk/         @structo/sdk — client for the delivery API
 ```

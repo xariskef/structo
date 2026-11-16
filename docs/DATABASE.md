@@ -100,19 +100,19 @@ editorial metadata and scheduling, and scoped versioned taxonomies with dynamic
 term fields, nested navigation menus, hashed site delivery API tokens and
 site-scoped media metadata.
 
-Phase 9 stabilization adds corrective migrations:
+Corrective migrations:
 
 - `20260602220000_stabilize_preview_token_scope` changes entry-scoped preview
   tokens to cascade on entry deletion so their scope cannot widen.
 - `20260602221000_complete_published_snapshot` stores the content-type version
   and publication timestamp on every immutable content revision.
 
-Phase 8.1 (operational visibility) added no migration. It reads the existing
+Operational visibility (activity logs) adds no migration. It reads the existing
 `AuditLog` and `PlatformOperatorAccess` tables; the `AuditLog` indexes on
 `organizationId`, `siteId`, `actorId` and `createdAt` support the activity-log
 listings.
 
-Per-site storage configuration (Phase 8.1 extension) also adds no migration.
+Per-site storage configuration also adds no migration.
 Credentials are stored as `SiteSetting` rows under the `storage.*` key
 namespace. The secret access key is encrypted with `STORAGE_ENCRYPTION_KEY`.
 Generate the key with:
@@ -141,7 +141,7 @@ Before the first migration:
 4. Copy both pooled and direct connection strings.
 5. Add local `DATABASE_URL` and `DIRECT_URL` values.
 6. Confirm that local environment files are ignored by Git.
-7. Run the initial versioned migration only after the Phase 1 scaffold exists.
+7. Apply the versioned migrations with `corepack pnpm db:deploy`.
 
 ## Future Environments
 

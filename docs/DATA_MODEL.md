@@ -4,11 +4,10 @@
 
 The identity, tenancy, site settings, audit log, content type and content entry
 foundations are implemented through versioned Prisma migrations. Delivery and
-media are implemented. Phase 8.1 adds read-only access over the existing
-`AuditLog` records (organization and site activity logs) and a restricted
-platform operator surface backed by `PlatformOperatorAccess`. `AnalyticsEvent`
-remains conceptual until the Q-004 boundary is decided. No new tables or
-migrations were required for Phase 8.1.
+media are implemented. Organization and site activity logs read the existing
+`AuditLog` records, and a restricted platform operator surface is backed by
+`PlatformOperatorAccess`. `AnalyticsEvent` remains conceptual until the Q-004
+boundary is decided.
 
 ## Identity And Access
 
@@ -591,8 +590,7 @@ erased.
 
 ### AnalyticsEvent
 
-Reserved for later analytics work and intentionally not implemented in Phase
-8.1. The first analytics boundary (Q-004) must be decided before any visitor
+Reserved for later analytics work and intentionally not implemented. The first analytics boundary (Q-004) must be decided before any visitor
 data is collected.
 
 ## Tenancy Invariants
