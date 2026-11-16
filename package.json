@@ -2,6 +2,11 @@
   "name": "structo-cms",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xariskef/structo.git"
+  },
   "packageManager": "pnpm@11.5.0",
   "engines": {
     "node": ">=24 <25",
