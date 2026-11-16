@@ -254,8 +254,8 @@ export function CollectionsList({ siteId }: CollectionsListProps) {
               <div className="flex flex-col gap-3">
                 <div className="rounded-md bg-green-500/10 px-4 py-3 text-sm text-green-700 dark:text-green-400">
                   <p className="font-medium">
-                    ✓ "{importResult.contentType.pluralName}" imported
-                    successfully
+                    ✓ &ldquo;{importResult.contentType.pluralName}&rdquo;
+                    imported successfully
                   </p>
                   <p className="mt-0.5 text-xs">
                     {importResult.entriesCreated} entr

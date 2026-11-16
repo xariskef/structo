@@ -564,18 +564,13 @@ export class EntriesService {
       }),
     ]);
 
-    this.webhooksService.dispatch(
-      entry.site.key,
-      siteId,
-      "entry.unpublished",
-      {
-        id: entryId,
-        contentTypeSlug: entry.contentType.slug,
-        slug: entry.slug,
-        title: entry.title,
-        status: "draft",
-      },
-    );
+    this.webhooksService.dispatch(entry.site.key, siteId, "entry.unpublished", {
+      id: entryId,
+      contentTypeSlug: entry.contentType.slug,
+      slug: entry.slug,
+      title: entry.title,
+      status: "draft",
+    });
 
     return this.get(userId, siteId, entryId);
   }

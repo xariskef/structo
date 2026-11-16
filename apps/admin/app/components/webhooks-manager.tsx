@@ -72,9 +72,7 @@ export function WebhooksManager({ siteId }: WebhooksManagerProps) {
     void load()
       .catch((reason: unknown) =>
         setError(
-          reason instanceof Error
-            ? reason.message
-            : "Unable to load webhooks.",
+          reason instanceof Error ? reason.message : "Unable to load webhooks.",
         ),
       )
       .finally(() => setLoading(false));
@@ -166,14 +164,11 @@ export function WebhooksManager({ siteId }: WebhooksManagerProps) {
     setTestingId(hook.id);
     setError(undefined);
     try {
-      await apiRequest(
-        `/manage/sites/${siteId}/webhooks/${hook.id}/test`,
-        { method: "POST" },
-      );
+      await apiRequest(`/manage/sites/${siteId}/webhooks/${hook.id}/test`, {
+        method: "POST",
+      });
     } catch (reason: unknown) {
-      setError(
-        reason instanceof Error ? reason.message : "Test ping failed.",
-      );
+      setError(reason instanceof Error ? reason.message : "Test ping failed.");
     } finally {
       setTestingId(undefined);
     }

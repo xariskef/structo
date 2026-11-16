@@ -150,7 +150,11 @@ export function EntryEditor({
       setTitle(obj.title);
       if (!slugEdited) setSlug(labelToSlug(obj.title));
     }
-    if (obj.data !== undefined && typeof obj.data === "object" && obj.data !== null) {
+    if (
+      obj.data !== undefined &&
+      typeof obj.data === "object" &&
+      obj.data !== null
+    ) {
       setData((prev) => ({
         ...prev,
         ...(obj.data as Record<string, unknown>),
@@ -160,7 +164,10 @@ export function EntryEditor({
       setExcerpt(obj.excerpt);
     if (obj.seoTitle !== undefined && typeof obj.seoTitle === "string")
       setSeoTitle(obj.seoTitle);
-    if (obj.seoDescription !== undefined && typeof obj.seoDescription === "string")
+    if (
+      obj.seoDescription !== undefined &&
+      typeof obj.seoDescription === "string"
+    )
       setSeoDescription(obj.seoDescription);
     setImportDataApplied(true);
     setTimeout(() => setImportDataApplied(false), 3000);
@@ -634,7 +641,9 @@ export function EntryEditor({
                     className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                   {importDataError && (
-                    <p className="text-xs text-destructive">{importDataError}</p>
+                    <p className="text-xs text-destructive">
+                      {importDataError}
+                    </p>
                   )}
                   {importDataApplied && (
                     <p className="flex items-center gap-1.5 text-xs text-primary">

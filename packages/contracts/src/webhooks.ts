@@ -23,9 +23,7 @@ export const createWebhookSchema = z.object({
     .string()
     .url("Must be a valid URL.")
     .startsWith("https://", "Webhook URL must use HTTPS."),
-  events: z
-    .array(z.enum(WEBHOOK_EVENTS))
-    .min(1, "Select at least one event."),
+  events: z.array(z.enum(WEBHOOK_EVENTS)).min(1, "Select at least one event."),
 });
 
 export type CreateWebhookInput = z.infer<typeof createWebhookSchema>;

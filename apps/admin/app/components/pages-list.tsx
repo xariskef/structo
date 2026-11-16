@@ -304,7 +304,8 @@ export function PagesList({ siteId }: PagesListProps) {
               <div className="flex flex-col gap-3">
                 <div className="rounded-md bg-green-500/10 px-4 py-3 text-sm text-green-700 dark:text-green-400">
                   <p className="font-medium">
-                    ✓ "{importResult.contentType.name}" imported successfully
+                    ✓ &ldquo;{importResult.contentType.name}&rdquo; imported
+                    successfully
                   </p>
                   {importResult.entriesCreated > 0 && (
                     <p className="mt-0.5 text-xs">
